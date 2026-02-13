@@ -5,52 +5,32 @@ import {
  GuildFeature,
  type RESTGetAPIChannelMessageReactionUsersQuery,
  type RESTGetAPIChannelMessagesQuery,
+ type RESTGetAPIChannelThreadsArchivedQuery,
  type RESTPatchAPIChannelJSONBody,
+ type RESTPostAPIChannelInviteJSONBody,
+ type RESTPostAPIChannelThreadsJSONBody,
+ type RESTPostAPIChannelWebhookJSONBody,
+ type RESTPutAPIChannelPermissionJSONBody,
  type Snowflake,
 } from '@discordjs/core';
-import { REST } from '@discordjs/rest';
 
 import type { EmojiResolvable } from '../types/index.js';
 
+import API from './API.js';
 import PermissionUtility from './ChannelPermissionsUtility.js';
-import { RequestHandlerError } from './RequestHandlerError.js';
 
-export default class ChannelsAPI {
+export default class ChannelsAPI extends API {
  util: PermissionUtility;
  base: DiscordChannelsAPI;
- rest: REST;
- private appId: string;
 
- constructor(token: string, logger: typeof Logger, cache: Cache) {
-  const rest = new REST({
-   api: `http://${process.argv.includes('--dev') ? 'localhost' : 'nirn'}:8080/api`,
-  });
-  rest.setToken(token);
+ constructor(token: string, logger: typeof Logger, guildId: string, cache: Cache) {
+  super(token, logger, guildId);
 
-  this.base = new DiscordChannelsAPI(rest);
-  this.rest = rest;
-  this.appId = Buffer.from(token.replace('Bot ', '').split('.')[0], 'base64').toString();
+  this.base = new DiscordChannelsAPI(this.rest);
   this.util = new PermissionUtility(logger, cache, this.appId);
  }
 
- private createError(
-  options: { guildId: string | undefined; channelId: string },
-  {
-   action,
-   detail,
-   debug,
-   message,
-  }: { action: string; detail: string; debug: number; message: string },
-  { errorMessage, error }: { errorMessage: string; error: Error },
- ) {
-  return new RequestHandlerError(options, errorMessage)
-   .setAction(action)
-   .setDetail(detail)
-   .setDebug(debug)
-   .setReason(message)
-   .setDebug(debug)
-   .setError(error);
- }
+ // TODO: validators for payloads. Create and edit message
 
  async createMessage(
   channelId: Snowflake,
@@ -88,8 +68,15 @@ export default class ChannelsAPI {
    );
   }
 
-  const m = await this.base.createMessage(channelId, message);
-  return m;
+  return this.base
+   .createMessage(channelId, message)
+   .catch((err) =>
+    this.createError(
+     { guildId, channelId },
+     { action: 'create message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async editMessage(
@@ -127,10 +114,16 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.editMessage(channelId, messageId, message);
+  return this.base
+   .editMessage(channelId, messageId, message)
+   .catch((err) =>
+    this.createError(
+     { guildId: msg?.guild_id || channel?.guild_id, channelId },
+     { action: 'edit message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
-
- // TODO: add editDirectMessage and createDirectMessage
 
  async getMessageReactions(
   channelId: Snowflake,
@@ -157,7 +150,15 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.getMessageReactions(channelId, messageId, emoji, query);
+  return this.base
+   .getMessageReactions(channelId, messageId, emoji, query)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get message reactions', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async deleteMessageReaction(
@@ -189,7 +190,15 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.deleteOwnMessageReaction(channelId, messageId, emoji);
+  return this.base
+   .deleteOwnMessageReaction(channelId, messageId, emoji)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'delete own message reaction', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async deleteAllMessageReactions(
@@ -215,7 +224,15 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.deleteAllMessageReactions(channelId, messageId);
+  return this.base
+   .deleteAllMessageReactions(channelId, messageId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'delete all message reactions', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async deleteAllMessageReactionsForEmoji(
@@ -248,7 +265,18 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.deleteAllMessageReactionsForEmoji(channelId, messageId, emoji);
+  return this.base.deleteAllMessageReactionsForEmoji(channelId, messageId, emoji).catch((err) =>
+   this.createError(
+    { guildId: channel.guild_id, channelId },
+    {
+     action: 'delete all message reactions for emoji',
+     detail: origin,
+     debug: -1,
+     message: reason,
+    },
+    { errorMessage: err.message, error: err },
+   ),
+  );
  }
 
  async addMessageReaction(
@@ -267,7 +295,15 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.addMessageReaction(channelId, messageId, emoji);
+  return this.base
+   .addMessageReaction(channelId, messageId, emoji)
+   .catch((err) =>
+    this.createError(
+     { guildId, channelId },
+     { action: 'add message reaction', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  get(channelId: Snowflake) {
@@ -690,7 +726,15 @@ export default class ChannelsAPI {
    return;
   }
 
-  return this.base.edit(channelId, body, { reason });
+  return this.base
+   .edit(channelId, body, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'edit channel', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async getMessages(
@@ -716,7 +760,15 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.getMessages(channelId, query);
+  return this.base
+   .getMessages(channelId, query)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id!, channelId },
+     { action: 'get messages', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async showTyping(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
@@ -738,7 +790,15 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.showTyping(channelId);
+  return this.base
+   .showTyping(channelId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id!, channelId },
+     { action: 'show typing', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 
  async getPins(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
@@ -772,6 +832,987 @@ export default class ChannelsAPI {
    );
   }
 
-  return this.base.getPins(channelId);
+  return this.base
+   .getPins(channelId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get pins', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async pinMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'pin message', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'pin message', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to pin a message in a channel that is not in a guild via pinMessage API method. Use pinDirectMessage for DMs instead.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canPinMessage(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'pin message', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .pinMessage(channelId, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'pin message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async unpinMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'unpin message', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'unpin message', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to unpin a message in a channel that is not in a guild via unpinMessage API method. Use unpinDirectMessage for DMs instead.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canUnpinMessage(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'unpin message', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .unpinMessage(channelId, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'unpin message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async deleteMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const msg = await this.util.cache.messages.get(messageId);
+  const channel = await this.util.cache.channels.get(channelId);
+
+  if ((!msg || !msg.channel_id) && (!channel || !channel.guild_id)) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'delete message', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to delete a message in a channel that is not in a guild via deleteMessage API method. Use deleteDirectMessage for DMs instead.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const guildId = (msg?.guild_id || channel?.guild_id)!;
+
+  const can = await this.util.canDeleteMessage(guildId, channelId, msg?.author_id);
+  if (!can.response) {
+   return this.createError(
+    { guildId, channelId },
+    { action: 'delete message', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .deleteMessage(channelId, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId, channelId },
+     { action: 'delete message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async bulkDeleteMessages(
+  channelId: Snowflake,
+  messageIds: Snowflake[],
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'bulk delete messages', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'bulk delete messages', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to bulk delete messages in a channel that is not in a guild via bulkDeleteMessages API method. Use bulkDeleteDirectMessages for DMs instead.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canBulkDeleteMessages(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'bulk delete messages', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .bulkDeleteMessages(channelId, messageIds, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'bulk delete messages', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async getMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get message', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get message', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to get a message in a channel that is not in a guild via getMessage API method. Use getDirectMessage for DMs instead.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canGetMessages(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'get message', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .getMessage(channelId, messageId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async crosspostMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'crosspost message', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'crosspost message', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to crosspost a message in a channel that is not in a guild via crosspostMessage API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const msg = await this.util.cache.messages.get(messageId);
+
+  const can = await this.util.canCrosspostMessage(channel.guild_id, channelId, msg?.author_id);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'crosspost message', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .crosspostMessage(channelId, messageId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'crosspost message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async followAnnouncements(
+  channelId: Snowflake,
+  webhookChannelId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const webhookChannel = await this.util.cache.channels.get(webhookChannelId);
+  if (!webhookChannel) {
+   return this.createError(
+    { guildId: undefined, channelId: webhookChannelId },
+    { action: 'follow announcements', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Webhook target channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!webhookChannel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId: webhookChannelId },
+    { action: 'follow announcements', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage: 'Webhook target channel is not in a guild.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canFollowAnnouncements(webhookChannel.guild_id, webhookChannelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: webhookChannel.guild_id, channelId: webhookChannelId },
+    { action: 'follow announcements', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .followAnnouncements(channelId, webhookChannelId, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: webhookChannel.guild_id, channelId: webhookChannelId },
+     { action: 'follow announcements', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async createInvite(
+  channelId: Snowflake,
+  body: RESTPostAPIChannelInviteJSONBody,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create invite', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create invite', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to create an invite for a channel that is not in a guild via createInvite API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canCreateInvite(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'create invite', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .createInvite(channelId, body, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'create invite', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async getInvites(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get invites', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get invites', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to get invites for a channel that is not in a guild via getInvites API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canGetInvites(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'get invites', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .getInvites(channelId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get invites', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async createThread(
+  channelId: Snowflake,
+  body: RESTPostAPIChannelThreadsJSONBody,
+  messageId: Snowflake | undefined,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create thread', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create thread', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to create a thread in a channel that is not in a guild via createThread API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const isPrivate = !messageId && body.type === ChannelType.PrivateThread;
+  const can = await this.util.canCreateThread(channel.guild_id, channelId, isPrivate);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'create thread', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .createThread(channelId, body, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'create thread', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async createForumThread(
+  channelId: Snowflake,
+  body: Parameters<DiscordChannelsAPI['createForumThread']>[1],
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create forum thread', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create forum thread', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to create a forum thread in a channel that is not in a guild via createForumThread API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  if (![ChannelType.GuildForum, ChannelType.GuildMedia].includes(channel.type)) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'create forum thread', detail: origin, debug: 1, message: reason },
+    {
+     errorMessage: 'createForumThread can only be used on Forum and Media channels.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canCreateForumThread(channel.guild_id, channelId, body);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'create forum thread', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .createForumThread(channelId, body, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'create forum thread', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async getArchivedThreads(
+  channelId: Snowflake,
+  archivedStatus: 'private' | 'public',
+  query: RESTGetAPIChannelThreadsArchivedQuery | undefined,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get archived threads', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get archived threads', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to get archived threads in a channel that is not in a guild via getArchivedThreads API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canGetArchivedThreads(
+   channel.guild_id,
+   channelId,
+   archivedStatus === 'private',
+  );
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'get archived threads', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .getArchivedThreads(channelId, archivedStatus, query)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get archived threads', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async getJoinedPrivateArchivedThreads(
+  channelId: Snowflake,
+  query: RESTGetAPIChannelThreadsArchivedQuery | undefined,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get joined private archived threads', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get joined private archived threads', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to get joined private archived threads in a channel that is not in a guild via getJoinedPrivateArchivedThreads API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canGetJoinedPrivateArchivedThreads(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    {
+     action: 'get joined private archived threads',
+     detail: origin,
+     debug: can.debug,
+     message: reason,
+    },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .getJoinedPrivateArchivedThreads(channelId, query)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get joined private archived threads', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async createWebhook(
+  channelId: Snowflake,
+  body: RESTPostAPIChannelWebhookJSONBody,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create webhook', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'create webhook', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to create a webhook in a channel that is not in a guild via createWebhook API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canCreateWebhook(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'create webhook', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .createWebhook(channelId, body, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'create webhook', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async getWebhooks(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get webhooks', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'get webhooks', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to get webhooks for a channel that is not in a guild via getWebhooks API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canGetWebhooks(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'get webhooks', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .getWebhooks(channelId)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'get webhooks', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async editPermissionOverwrite(
+  channelId: Snowflake,
+  overwriteId: Snowflake,
+  body: RESTPutAPIChannelPermissionJSONBody,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'edit permission overwrite', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'edit permission overwrite', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to edit a permission overwrite in a channel that is not in a guild via editPermissionOverwrite API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canEditPermissionOverwrite(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'edit permission overwrite', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .editPermissionOverwrite(channelId, overwriteId, body, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'edit permission overwrite', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async deletePermissionOverwrite(
+  channelId: Snowflake,
+  overwriteId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'delete permission overwrite', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'delete permission overwrite', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to delete a permission overwrite in a channel that is not in a guild via deletePermissionOverwrite API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canDeletePermissionOverwrite(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'delete permission overwrite', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .deletePermissionOverwrite(channelId, overwriteId, { reason })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'delete permission overwrite', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async sendSoundboardSound(
+  channelId: Snowflake,
+  body: Parameters<DiscordChannelsAPI['sendSoundboardSound']>[1],
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  const channel = await this.util.cache.channels.get(channelId);
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'send soundboard sound', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  if (!channel.guild_id) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'send soundboard sound', detail: origin, debug: 0, message: reason },
+    {
+     errorMessage:
+      'Attempted to send a soundboard sound in a channel that is not in a guild via sendSoundboardSound API method.',
+     error: new Error(),
+    },
+   );
+  }
+
+  const can = await this.util.canSendSoundboardSound(
+   channel.guild_id,
+   channelId,
+   (body as { source_guild_id?: string }).source_guild_id,
+  );
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'send soundboard sound', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .sendSoundboardSound(channelId, body)
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'send soundboard sound', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ createDirectMessage(
+  channelId: Snowflake,
+  message: Parameters<DiscordChannelsAPI['createMessage']>[1],
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .createMessage(channelId, message)
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'create direct message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ editDirectMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  message: Parameters<DiscordChannelsAPI['editMessage']>[2],
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .editMessage(channelId, messageId, message)
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'edit direct message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ getDirectMessagePins(
+  channelId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .getPins(channelId)
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'get direct message pins', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ pinDirectMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .pinMessage(channelId, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'pin direct message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ unpinDirectMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .unpinMessage(channelId, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'unpin direct message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ deleteDirectMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .deleteMessage(channelId, messageId, { reason })
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'delete direct message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ bulkDeleteDirectMessages(
+  channelId: Snowflake,
+  messageIds: Snowflake[],
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .bulkDeleteMessages(channelId, messageIds, { reason })
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'bulk delete direct messages', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ getDirectMessage(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .getMessage(channelId, messageId)
+   .catch((err) =>
+    this.createError(
+     { channelId, guildId: undefined },
+     { action: 'get direct message', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
  }
 }
