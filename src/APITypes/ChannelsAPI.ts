@@ -3,6 +3,7 @@ import {
  ChannelType,
  ChannelsAPI as DiscordChannelsAPI,
  GuildFeature,
+ MessageFlags,
  type RESTGetAPIChannelMessageReactionUsersQuery,
  type RESTGetAPIChannelMessagesQuery,
  type RESTGetAPIChannelThreadsArchivedQuery,
@@ -30,7 +31,332 @@ export default class ChannelsAPI extends API {
   this.util = new PermissionUtility(logger, cache, this.appId);
  }
 
- // TODO: validators for payloads. Create and edit message
+ private static countComponents(
+  components: { type: number; components?: { type: number; components?: unknown[] }[] }[],
+ ): number {
+  let count = components.length;
+  for (const component of components) {
+   if (component.components) {
+    count += ChannelsAPI.countComponents(
+     component.components as {
+      type: number;
+      components?: { type: number; components?: unknown[] }[];
+     }[],
+    );
+   }
+  }
+  return count;
+ }
+
+ private static validateV1Components(
+  components: {
+   type: number;
+   label?: string;
+   // eslint-disable-next-line @typescript-eslint/naming-convention
+   custom_id?: string;
+   placeholder?: string;
+   options?: { label?: string; description?: string; value?: string }[];
+   components?: {
+    type: number;
+    label?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    custom_id?: string;
+    placeholder?: string;
+    options?: { label?: string; description?: string; value?: string }[];
+   }[];
+  }[],
+ ): { valid: true } | { valid: false; debug: number; errorMessage: string } {
+  if (components.length > 5) {
+   return {
+    valid: false,
+    debug: 22,
+    errorMessage: 'Message must have 5 or fewer action rows',
+   };
+  }
+
+  for (const row of components) {
+   if (!row.components) continue;
+
+   const buttons = row.components.filter((c) => c.type === 2);
+   const selects = row.components.filter((c) => c.type >= 3 && c.type <= 8);
+
+   if (buttons.length && selects.length) {
+    return {
+     valid: false,
+     debug: 23,
+     errorMessage: 'Action row cannot contain both buttons and select menus',
+    };
+   }
+
+   if (buttons.length > 5) {
+    return {
+     valid: false,
+     debug: 24,
+     errorMessage: 'Action row must have 5 or fewer buttons',
+    };
+   }
+
+   if (selects.length > 1) {
+    return {
+     valid: false,
+     debug: 25,
+     errorMessage: 'Action row must have 1 or fewer select menus',
+    };
+   }
+
+   for (const button of buttons) {
+    if (button.label && button.label.length > 80) {
+     return {
+      valid: false,
+      debug: 26,
+      errorMessage: 'Button label must be 80 or fewer characters',
+     };
+    }
+
+    if (button.custom_id && button.custom_id.length > 100) {
+     return {
+      valid: false,
+      debug: 27,
+      errorMessage: 'Button custom_id must be 100 or fewer characters',
+     };
+    }
+   }
+
+   for (const select of selects) {
+    if (select.custom_id && select.custom_id.length > 100) {
+     return {
+      valid: false,
+      debug: 28,
+      errorMessage: 'Select menu custom_id must be 100 or fewer characters',
+     };
+    }
+
+    if (select.placeholder && select.placeholder.length > 150) {
+     return {
+      valid: false,
+      debug: 29,
+      errorMessage: 'Select menu placeholder must be 150 or fewer characters',
+     };
+    }
+
+    if (select.options) {
+     if (select.options.length > 25) {
+      return {
+       valid: false,
+       debug: 30,
+       errorMessage: 'Select menu must have 25 or fewer options',
+      };
+     }
+
+     for (const option of select.options) {
+      if (option.label && option.label.length > 100) {
+       return {
+        valid: false,
+        debug: 31,
+        errorMessage: 'Select option label must be 100 or fewer characters',
+       };
+      }
+
+      if (option.description && option.description.length > 100) {
+       return {
+        valid: false,
+        debug: 32,
+        errorMessage: 'Select option description must be 100 or fewer characters',
+       };
+      }
+
+      if (option.value && option.value.length > 100) {
+       return {
+        valid: false,
+        debug: 33,
+        errorMessage: 'Select option value must be 100 or fewer characters',
+       };
+      }
+     }
+    }
+   }
+  }
+
+  return { valid: true };
+ }
+
+ private static validateMessagePayload(
+  message: {
+   content?: string | null;
+   embeds?:
+    | {
+       title?: string;
+       description?: string;
+       footer?: { text: string };
+       author?: { name: string };
+       fields?: { name: string; value: string }[];
+      }[]
+    | null;
+   // eslint-disable-next-line @typescript-eslint/naming-convention
+   sticker_ids?: string[];
+   components?: {
+    type: number;
+    label?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    custom_id?: string;
+    placeholder?: string;
+    options?: { label?: string; description?: string; value?: string }[];
+    components?: {
+     type: number;
+     label?: string;
+     // eslint-disable-next-line @typescript-eslint/naming-convention
+     custom_id?: string;
+     placeholder?: string;
+     options?: { label?: string; description?: string; value?: string }[];
+    }[];
+   }[];
+   files?: unknown[];
+   flags?: MessageFlags;
+   poll?: unknown;
+  },
+  isCreate: boolean,
+ ): { valid: true } | { valid: false; debug: number; errorMessage: string } {
+  if (
+   isCreate &&
+   !message.content?.length &&
+   !message.embeds?.length &&
+   !message.sticker_ids?.length &&
+   !message.components?.length &&
+   !message.files?.length &&
+   !message.poll
+  ) {
+   return {
+    valid: false,
+    debug: 10,
+    errorMessage:
+     'Message must have at least one of: content, embeds, sticker_ids, components, files, or poll',
+   };
+  }
+
+  if (message.content && message.content.length > 2000) {
+   return {
+    valid: false,
+    debug: 11,
+    errorMessage: 'Message content must be 2000 or fewer characters',
+   };
+  }
+
+  if (message.embeds && message.embeds.length > 10) {
+   return { valid: false, debug: 12, errorMessage: 'Message must have 10 or fewer embeds' };
+  }
+
+  if (message.sticker_ids && message.sticker_ids.length > 3) {
+   return { valid: false, debug: 13, errorMessage: 'Message must have 3 or fewer sticker IDs' };
+  }
+
+  if (message.embeds?.length) {
+   let totalChars = 0;
+
+   for (const embed of message.embeds) {
+    if (embed.title && embed.title.length > 256) {
+     return {
+      valid: false,
+      debug: 14,
+      errorMessage: 'Embed title must be 256 or fewer characters',
+     };
+    }
+
+    if (embed.description && embed.description.length > 4096) {
+     return {
+      valid: false,
+      debug: 15,
+      errorMessage: 'Embed description must be 4096 or fewer characters',
+     };
+    }
+
+    if (embed.footer?.text && embed.footer.text.length > 2048) {
+     return {
+      valid: false,
+      debug: 16,
+      errorMessage: 'Embed footer text must be 2048 or fewer characters',
+     };
+    }
+
+    if (embed.author?.name && embed.author.name.length > 256) {
+     return {
+      valid: false,
+      debug: 17,
+      errorMessage: 'Embed author name must be 256 or fewer characters',
+     };
+    }
+
+    totalChars +=
+     (embed.title?.length ?? 0) +
+     (embed.description?.length ?? 0) +
+     (embed.footer?.text?.length ?? 0) +
+     (embed.author?.name?.length ?? 0);
+
+    if (embed.fields) {
+     if (embed.fields.length > 25) {
+      return {
+       valid: false,
+       debug: 18,
+       errorMessage: 'Each embed must have 25 or fewer fields',
+      };
+     }
+
+     for (const field of embed.fields) {
+      if (field.name.length > 256) {
+       return {
+        valid: false,
+        debug: 19,
+        errorMessage: 'Embed field name must be 256 or fewer characters',
+       };
+      }
+
+      if (field.value.length > 1024) {
+       return {
+        valid: false,
+        debug: 20,
+        errorMessage: 'Embed field value must be 1024 or fewer characters',
+       };
+      }
+
+      totalChars += field.name.length + field.value.length;
+     }
+    }
+   }
+
+   if (totalChars > 6000) {
+    return {
+     valid: false,
+     debug: 21,
+     errorMessage: 'Total characters across all embeds must be 6000 or fewer',
+    };
+   }
+  }
+
+  if (message.components?.length) {
+   const isV2 = message.flags && message.flags & MessageFlags.IsComponentsV2;
+
+   if (isV2) {
+    const totalCount = ChannelsAPI.countComponents(
+     message.components as {
+      type: number;
+      components?: { type: number; components?: unknown[] }[];
+     }[],
+    );
+
+    if (totalCount > 40) {
+     return {
+      valid: false,
+      debug: 34,
+      errorMessage: 'V2 message must have 40 or fewer total components',
+     };
+    }
+   } else {
+    const v1Result = ChannelsAPI.validateV1Components(message.components);
+    if (!v1Result.valid) return v1Result;
+   }
+  }
+
+  return { valid: true };
+ }
 
  async createMessage(
   channelId: Snowflake,
@@ -65,6 +391,15 @@ export default class ChannelsAPI extends API {
     { guildId, channelId },
     { action: 'create message', detail: origin, debug: can.debug, message: reason },
     { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  const validation = ChannelsAPI.validateMessagePayload(message, true);
+  if (!validation.valid) {
+   return this.createError(
+    { guildId, channelId },
+    { action: 'create message', detail: origin, debug: validation.debug, message: reason },
+    { errorMessage: validation.errorMessage, error: new Error() },
    );
   }
 
@@ -111,6 +446,15 @@ export default class ChannelsAPI extends API {
     { guildId: msg?.guild_id || channel?.guild_id, channelId },
     { action: 'edit message', detail: origin, debug: can.debug, message: reason },
     { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  const validation = ChannelsAPI.validateMessagePayload(message, false);
+  if (!validation.valid) {
+   return this.createError(
+    { guildId: msg?.guild_id || channel?.guild_id, channelId },
+    { action: 'edit message', detail: origin, debug: validation.debug, message: reason },
+    { errorMessage: validation.errorMessage, error: new Error() },
    );
   }
 

@@ -17,8 +17,6 @@ export default class InteractionsAPI extends API {
   this.base = new DiscordInteractionsAPI(this.rest, webhooks);
  }
 
- // Interaction Responses
-
  reply(
   interactionId: Snowflake,
   interactionToken: string,
@@ -137,8 +135,6 @@ export default class InteractionsAPI extends API {
     ),
    );
  }
-
- // Follow-up Messages (applicationId stripped, uses this.appId)
 
  followUp(
   interactionToken: string,
