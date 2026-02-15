@@ -4,6 +4,8 @@ import {
  ChannelsAPI as DiscordChannelsAPI,
  GuildFeature,
  MessageFlags,
+ type CreateMessageOptions,
+ type EditMessageOptions,
  type RESTGetAPIChannelMessageReactionUsersQuery,
  type RESTGetAPIChannelMessagesQuery,
  type RESTGetAPIChannelThreadsArchivedQuery,
@@ -181,49 +183,17 @@ export default class ChannelsAPI extends API {
  }
 
  private static validateMessagePayload(
-  message: {
-   content?: string | null;
-   embeds?:
-    | {
-       title?: string;
-       description?: string;
-       footer?: { text: string };
-       author?: { name: string };
-       fields?: { name: string; value: string }[];
-      }[]
-    | null;
-   // eslint-disable-next-line @typescript-eslint/naming-convention
-   sticker_ids?: string[];
-   components?: {
-    type: number;
-    label?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    custom_id?: string;
-    placeholder?: string;
-    options?: { label?: string; description?: string; value?: string }[];
-    components?: {
-     type: number;
-     label?: string;
-     // eslint-disable-next-line @typescript-eslint/naming-convention
-     custom_id?: string;
-     placeholder?: string;
-     options?: { label?: string; description?: string; value?: string }[];
-    }[];
-   }[];
-   files?: unknown[];
-   flags?: MessageFlags;
-   poll?: unknown;
-  },
+  message: EditMessageOptions | CreateMessageOptions,
   isCreate: boolean,
  ): { valid: true } | { valid: false; debug: number; errorMessage: string } {
   if (
    isCreate &&
    !message.content?.length &&
    !message.embeds?.length &&
-   !message.sticker_ids?.length &&
+   ('sticker_ids' in message ? !message.sticker_ids?.length : false) &&
    !message.components?.length &&
    !message.files?.length &&
-   !message.poll
+   ('poll' in message ? !message.poll : false)
   ) {
    return {
     valid: false,
@@ -245,7 +215,7 @@ export default class ChannelsAPI extends API {
    return { valid: false, debug: 12, errorMessage: 'Message must have 10 or fewer embeds' };
   }
 
-  if (message.sticker_ids && message.sticker_ids.length > 3) {
+  if ('sticker_ids' in message && message.sticker_ids && message.sticker_ids.length > 3) {
    return { valid: false, debug: 13, errorMessage: 'Message must have 3 or fewer sticker IDs' };
   }
 
@@ -2011,6 +1981,7 @@ export default class ChannelsAPI extends API {
   const can = await this.util.canSendSoundboardSound(
    channel.guild_id,
    channelId,
+   // eslint-disable-next-line @typescript-eslint/naming-convention
    (body as { source_guild_id?: string }).source_guild_id,
   );
   if (!can.response) {

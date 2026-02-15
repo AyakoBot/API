@@ -1,5 +1,5 @@
 import type { logger as Logger } from '@ayako/utility';
-import { OAuth2API as DiscordOAuth2API, type Snowflake } from '@discordjs/core';
+import { OAuth2API as DiscordOAuth2API } from '@discordjs/core';
 
 import API from './API.js';
 
@@ -74,20 +74,18 @@ export default class OAuth2API extends API {
  }
 
  getCurrentAuthorizationInformation({ origin, reason }: { origin: string; reason: string }) {
-  return this.base
-   .getCurrentAuthorizationInformation()
-   .catch((err) =>
-    this.createError(
-     { applicationId: this.appId, guildId: undefined },
-     {
-      action: 'get current authorization info',
-      detail: origin,
-      debug: -1,
-      message: reason,
-     },
-     { errorMessage: err.message, error: err },
-    ),
-   );
+  return this.base.getCurrentAuthorizationInformation().catch((err) =>
+   this.createError(
+    { applicationId: this.appId, guildId: undefined },
+    {
+     action: 'get current authorization info',
+     detail: origin,
+     debug: -1,
+     message: reason,
+    },
+    { errorMessage: err.message, error: err },
+   ),
+  );
  }
 
  revokeToken(
