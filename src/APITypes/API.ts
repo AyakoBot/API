@@ -2,19 +2,18 @@ import type { logger as Logger } from '@ayako/utility';
 import { PermissionFlagsBits } from '@discordjs/core';
 import { REST } from '@discordjs/rest';
 
-import {
- RequestHandlerError,
- type Options,
- type RequestHandlerErrorType,
-} from './RequestHandlerError.js';
+import { EventEmitter } from 'node:stream';
+import type { Options, RequestHandlerErrorType } from '../types/index.js';
+import RequestHandlerError from './RequestHandlerError.js';
 
-export default abstract class API {
+export default abstract class API extends EventEmitter {
  rest: REST;
  protected appId: string;
  protected logger: typeof Logger;
  protected guildId: string;
 
  constructor(token: string, logger: typeof Logger, guildId: string) {
+  super();
   this.rest = new REST({
    api: `http://${process.argv.includes('--dev') ? 'localhost' : 'nirn'}:8080/api`,
   });
@@ -31,37 +30,25 @@ export default abstract class API {
   );
  }
 
- protected handleError<T extends RequestHandlerErrorType>(
-  path: Options<T>,
-  origin: {
-   action: string;
-   detail: string;
-   debug: number;
-   message: string;
-  },
-  error: {
-   errorMessage: string;
-   error: Error;
-  },
- ) {
-  this.logger.warn(
-   `[PermissionUtility] Missing permission to ${origin.action} in ${
-    'channelId' in path
-     ? `guild ${path.guildId}, channel ${path.channelId}`
-     : 'applicationId' in path
-       ? `application ${path.applicationId}, guild ${path.guildId}`
-       : 'webhookId' in path
-         ? `webhook ${path.webhookId}`
-         : 'interactionId' in path
-           ? `interaction ${path.interactionId}`
-           : 'inviteCode' in path
-             ? `invite ${path.inviteCode}`
-             : `guild ${path.guildId}`
-   }. Detail: ${origin.detail}. Debug: ${origin.debug}. Message: ${origin.message}. Error: ${error.errorMessage}`,
+ protected handleError<T extends RequestHandlerErrorType>(err: RequestHandlerError<T>) {
+  this.logger.debug(
+   `[PermissionUtility] Missing permission to ${err.action} in ${
+    'channelId' in err.options
+     ? `guild ${err.options.guildId}, channel ${err.options.channelId}`
+     : 'applicationId' in err.options
+       ? `application ${err.options.applicationId}, guild ${err.options.guildId}`
+       : 'webhookId' in err.options
+         ? `webhook ${err.options.webhookId}`
+         : 'interactionId' in err.options
+           ? `interaction ${err.options.interactionId}`
+           : 'inviteCode' in err.options
+             ? `invite ${err.options.inviteCode}`
+             : `guild ${err.options.guildId}`
+   }. Detail: ${err.detail}. Debug: ${err.debug}. Message: ${err.reason}. Error: ${err.errorMessage}`,
   );
-  this.logger.warn(error.error.message, error.error.cause, error.error.stack);
+  this.logger.warn(err.error?.message, err.error?.cause, err.error?.stack);
 
-  return { success: false, path, origin, error };
+  this.emit('error', err);
  }
 
  protected createError<T extends RequestHandlerErrorType>(
@@ -74,12 +61,17 @@ export default abstract class API {
   }: { action: string; detail: string; debug: number; message: string },
   { errorMessage, error }: { errorMessage: string; error: Error },
  ) {
-  return new RequestHandlerError(options, errorMessage)
+  const err = new RequestHandlerError(options, errorMessage)
    .setAction(action)
    .setDetail(detail)
    .setDebug(debug)
    .setReason(message)
    .setDebug(debug)
-   .setError(error);
+   .setError(error)
+   .setAppId(this.appId);
+
+  this.handleError(err);
+
+  return err;
  }
 }

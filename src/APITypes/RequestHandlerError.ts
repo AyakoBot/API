@@ -1,65 +1,11 @@
-export enum RequestHandlerErrorType {
- Channel = 'channel',
- ApplicationCommands = 'applicationCommands',
- Applications = 'applications',
- Guilds = 'guilds',
- Webhooks = 'webhooks',
- Interactions = 'interactions',
- Invites = 'invites',
-}
+import type { Options, RequestHandlerErrorType } from '../types/index.js';
 
-interface ChannelPayload {
- guildId: string | undefined;
- channelId: string;
-}
-
-interface ApplicationCommandsPayload {
- applicationId: string;
- guildId: string | undefined;
-}
-
-interface ApplicationsPayload {
- applicationId: string;
- guildId: string | undefined;
-}
-
-interface GuildsPayload {
- guildId: string;
-}
-
-interface WebhooksPayload {
- webhookId: string;
-}
-
-interface InteractionsPayload {
- interactionId: string;
-}
-
-interface InvitesPayload {
- inviteCode: string;
-}
-
-export type Options<T extends RequestHandlerErrorType> = T extends RequestHandlerErrorType.Channel
- ? ChannelPayload
- : T extends RequestHandlerErrorType.ApplicationCommands
-   ? ApplicationCommandsPayload
-   : T extends RequestHandlerErrorType.Applications
-     ? ApplicationsPayload
-     : T extends RequestHandlerErrorType.Guilds
-       ? GuildsPayload
-       : T extends RequestHandlerErrorType.Webhooks
-         ? WebhooksPayload
-         : T extends RequestHandlerErrorType.Interactions
-           ? InteractionsPayload
-           : T extends RequestHandlerErrorType.Invites
-             ? InvitesPayload
-             : never;
-
-export class RequestHandlerError<T extends RequestHandlerErrorType> {
+export default class RequestHandlerError<T extends RequestHandlerErrorType> {
  options: Options<T>;
 
  action: string | null = null;
  detail: string | null = null;
+ appId: string | null = null;
 
  reason: string | null = null;
  errorMessage: string | null = null;
@@ -110,6 +56,11 @@ export class RequestHandlerError<T extends RequestHandlerErrorType> {
 
  setError(error: Error) {
   this.error = error;
+  return this;
+ }
+
+ setAppId(appId: string) {
+  this.appId = appId;
   return this;
  }
 }

@@ -21,8 +21,9 @@ import {
  WebhooksAPI,
 } from '@discordjs/core';
 import { REST } from '@discordjs/rest';
+import { EventEmitter } from 'node:stream';
 
-export default class API {
+export default class API extends EventEmitter {
  logger: typeof Logger;
  cache: Cache;
 
@@ -50,6 +51,7 @@ export default class API {
  botId: string;
 
  constructor(token: string, logger: typeof Logger, cache: Cache) {
+  super();
   this.logger = logger;
   this.cache = cache;
 
