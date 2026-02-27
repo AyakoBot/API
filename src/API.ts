@@ -21,7 +21,7 @@ import {
  WebhooksAPI,
 } from '@discordjs/core';
 import { REST } from '@discordjs/rest';
-import { EventEmitter } from 'node:stream';
+import { EventEmitter } from 'events';
 
 export default class API extends EventEmitter {
  logger: typeof Logger;
