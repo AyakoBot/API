@@ -57,9 +57,9 @@ export default class API extends EventEmitter {
 
   this.rest = new REST({
    api: `http://${process.argv.includes('--local') ? 'localhost' : 'nirn'}:8080/api`,
-  }).setToken(token);
+  }).setToken(token.includes('Bot ') ? token.replace('Bot ', '') : token);
   this.api = new DiscordAPI(this.rest);
-  this.botId = new Buffer(token.split('.')[0], 'base64').toString();
+  this.botId = new Buffer(token.replace('Bot ', '').split('.')[0], 'base64').toString();
 
   this.applicationCommands = new ApplicationCommandsAPI(this.rest);
   this.applications = new ApplicationsAPI(this.rest);
