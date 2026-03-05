@@ -73,7 +73,7 @@ export default class API extends EventEmitter {
   this.stageInstances = new StageInstancesAPI(token, this.logger, guildId, this.cache);
   this.stickers = new StickersAPI(token, this.logger, guildId);
   this.threads = new ThreadsAPI(token, this.logger, guildId, this.cache);
-  this.users = new UsersAPI(token, this.logger, guildId);
+  this.users = new UsersAPI(token, this.logger, guildId, this.cache);
   this.voice = new VoiceAPI(token, this.logger, guildId, this.cache);
   this.webhooks = new WebhooksAPI(token, this.logger, guildId);
   this.interactions = new InteractionsAPI(token, this.logger, guildId);
