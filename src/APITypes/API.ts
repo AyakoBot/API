@@ -15,7 +15,7 @@ export default abstract class API extends EventEmitter {
  constructor(token: string, logger: typeof Logger, guildId: string) {
   super();
   this.rest = new REST({
-   api: `http://${process.argv.includes('--dev') ? 'localhost' : 'nirn'}:8080/api`,
+   api: `http://${process.argv.includes('--local') ? 'localhost' : 'nirn'}:8080/api`,
   });
   this.rest.setToken(token);
   this.appId = Buffer.from(token.replace('Bot ', '').split('.')[0], 'base64').toString();
