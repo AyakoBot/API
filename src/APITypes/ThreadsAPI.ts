@@ -18,10 +18,7 @@ export default class ThreadsAPI extends API {
   this.cache = cache;
  }
 
- join(
-  threadId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ join(threadId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .join(threadId)
    .catch((err) =>
@@ -64,10 +61,7 @@ export default class ThreadsAPI extends API {
    );
  }
 
- leave(
-  threadId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ leave(threadId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .leave(threadId)
    .catch((err) =>
@@ -117,6 +111,10 @@ export default class ThreadsAPI extends API {
  ) {
   return this.base
    .getMember(threadId, userId)
+   .then((res) => {
+    this.cache.threadMembers.set(res, this.guildId);
+    return this.cache.threadMembers.apiToR(res, this.guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId: this.guildId, channelId: threadId },
@@ -126,12 +124,16 @@ export default class ThreadsAPI extends API {
    );
  }
 
- getAllMembers(
-  threadId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ getAllMembers(threadId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getAllMembers(threadId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.cache.threadMembers.set(r, this.guildId);
+    });
+
+    return res.map((r) => this.cache.threadMembers.apiToR(r, this.guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId: this.guildId, channelId: threadId },

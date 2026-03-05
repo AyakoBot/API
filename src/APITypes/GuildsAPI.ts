@@ -1,8 +1,31 @@
-import type { Cache, logger as Logger } from '@ayako/utility';
-import { GuildsAPI as DiscordGuildsAPI, type Snowflake } from '@discordjs/core';
+import type {
+ Cache,
+ logger as Logger,
+ RAutomod,
+ RChannelTypes,
+ RCommand,
+ REvent,
+ RGuildCommand,
+ RIntegration,
+ RThread,
+ RUser,
+ RWebhook,
+} from '@ayako/utility';
+import {
+ ChannelType,
+ GuildsAPI as DiscordGuildsAPI,
+ type APIGuildChannel,
+ type APIThreadChannel,
+ type Snowflake,
+ type ThreadChannelType,
+} from '@discordjs/core';
 
 import API from './API.js';
 import GuildPermissionsUtility from './GuildPermissionsUtility.js';
+import type { REventUser } from '../../../Utility/dist/CacheClasses/eventUser.js';
+import type { RequestHandlerErrorType } from '../types/index.js';
+import type RequestHandlerError from './RequestHandlerError.js';
+import type { RAuditLog } from '../../../Utility/dist/CacheClasses/auditlog.js';
 
 export default class GuildsAPI extends API {
  util: GuildPermissionsUtility;
@@ -22,6 +45,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .get(guildId, query)
+   .then((res) => {
+    this.util.cache.guilds.set(res);
+    return this.util.cache.guilds.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -71,6 +98,40 @@ export default class GuildsAPI extends API {
  getChannels(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getChannels(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     if (
+      [
+       ChannelType.PublicThread,
+       ChannelType.PrivateThread,
+       ChannelType.AnnouncementThread,
+      ].includes(r.type)
+     ) {
+      this.util.cache.threads.set({
+       ...(r as APIThreadChannel<ThreadChannelType>),
+       guild_id: guildId,
+      });
+      return;
+     }
+     this.util.cache.channels.set(r as APIGuildChannel<RChannelTypes>);
+    });
+
+    return res.map((r) => {
+     if (
+      [
+       ChannelType.PublicThread,
+       ChannelType.PrivateThread,
+       ChannelType.AnnouncementThread,
+      ].includes(r.type)
+     ) {
+      return this.util.cache.threads.apiToR({
+       ...(r as APIThreadChannel<ThreadChannelType>),
+       guild_id: guildId,
+      });
+     }
+     return this.util.cache.channels.apiToR(r as APIGuildChannel<RChannelTypes>);
+    });
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -133,6 +194,27 @@ export default class GuildsAPI extends API {
  getActiveThreads(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getActiveThreads(guildId)
+   .then((res) => {
+    res.threads.forEach((r) => {
+     this.util.cache.threads.set({
+      ...(r as APIThreadChannel<ThreadChannelType>),
+      guild_id: guildId,
+     });
+    });
+    res.members.forEach((r) => {
+     this.util.cache.threadMembers.set(r, guildId);
+    });
+
+    return {
+     threads: res.threads.map((r) =>
+      this.util.cache.threads.apiToR({
+       ...(r as APIThreadChannel<ThreadChannelType>),
+       guild_id: guildId,
+      }),
+     ),
+     members: res.members.map((r) => this.util.cache.threadMembers.apiToR(r, guildId)),
+    };
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -149,6 +231,13 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getMembers(guildId, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.members.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.members.apiToR(r, guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -165,6 +254,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getMember(guildId, userId)
+   .then((res) => {
+    this.util.cache.members.set(res, guildId);
+    return this.util.cache.members.apiToR(res, guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -181,6 +274,13 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .searchForMembers(guildId, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.members.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.members.apiToR(r, guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -270,6 +370,13 @@ export default class GuildsAPI extends API {
  getRoles(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getRoles(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.roles.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.roles.apiToR(r, guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -286,6 +393,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getRole(guildId, roleId)
+   .then((res) => {
+    this.util.cache.roles.set(res, guildId);
+    return this.util.cache.roles.apiToR(res, guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -464,6 +575,10 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getMemberBan(guildId, userId)
+   .then((res) => {
+    this.util.cache.bans.set(res, guildId);
+    return this.util.cache.bans.apiToR(res, guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -489,6 +604,13 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getMemberBans(guildId, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.bans.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.bans.apiToR(r, guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -648,6 +770,13 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getInvites(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.invites.set(r);
+    });
+
+    return res.map((r) => this.util.cache.invites.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -669,6 +798,13 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getIntegrations(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.integrations.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.integrations.apiToR(r, guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -804,6 +940,10 @@ export default class GuildsAPI extends API {
  getWelcomeScreen(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getWelcomeScreen(guildId)
+   .then((res) => {
+    this.util.cache.welcomeScreens.set(res, guildId);
+    return this.util.cache.welcomeScreens.apiToR(res, guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -841,6 +981,13 @@ export default class GuildsAPI extends API {
  getEmojis(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getEmojis(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.emojis.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.emojis.apiToR(r, guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -857,6 +1004,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getEmoji(guildId, emojiId)
+   .then((res) => {
+    this.util.cache.emojis.set(res, guildId);
+    return this.util.cache.emojis.apiToR(res, guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -949,6 +1100,13 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getScheduledEvents(guildId, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.events.set(r);
+    });
+
+    return res.map((r) => this.util.cache.events.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -966,6 +1124,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getScheduledEvent(guildId, eventId, query)
+   .then((res) => {
+    this.util.cache.events.set(res);
+    return this.util.cache.events.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1056,9 +1218,16 @@ export default class GuildsAPI extends API {
   eventId: Snowflake,
   query: Parameters<DiscordGuildsAPI['getScheduledEventUsers']>[2],
   { origin, reason }: { origin: string; reason: string },
- ) {
+ ): Promise<RequestHandlerError<RequestHandlerErrorType> | REventUser[]> {
   return this.base
    .getScheduledEventUsers(guildId, eventId, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.eventUsers.set(r, guildId);
+    });
+
+    return res.map((r) => this.util.cache.eventUsers.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1205,6 +1374,13 @@ export default class GuildsAPI extends API {
  getStickers(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getStickers(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.stickers.set(r);
+    });
+
+    return res.map((r) => this.util.cache.stickers.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1221,6 +1397,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getSticker(guildId, stickerId)
+   .then((res) => {
+    this.util.cache.stickers.set(res);
+    return this.util.cache.stickers.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1310,7 +1490,19 @@ export default class GuildsAPI extends API {
   guildId: Snowflake,
   query: Parameters<DiscordGuildsAPI['getAuditLogs']>[1],
   { origin, reason }: { origin: string; reason: string },
- ) {
+ ): Promise<
+  | RequestHandlerError<RequestHandlerErrorType>
+  | {
+     application_commands: (RCommand | RGuildCommand)[];
+     webhooks: RWebhook[];
+     users: RUser[];
+     audit_log_entries: RAuditLog[];
+     auto_moderation_rules: RAutomod[];
+     integrations: RIntegration[];
+     threads: RThread[];
+     guild_scheduled_events: REvent[];
+    }
+ > {
   const can = await this.util.canViewAuditLog(guildId);
   if (!can.response) {
    return this.createError(
@@ -1322,6 +1514,55 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getAuditLogs(guildId, query)
+   .then((res) => {
+    res.application_commands.forEach((r) => {
+     if (!r.guild_id) {
+      this.util.cache.guildCommands.set({ ...r, guild_id: r.guild_id! });
+      return;
+     }
+     this.util.cache.commands.set(r);
+    });
+
+    res.webhooks.forEach((r) => this.util.cache.webhooks.set({ ...r, guild_id: guildId }));
+    res.users.forEach((r) => this.util.cache.users.set(r));
+    res.audit_log_entries.forEach((r) => this.util.cache.audits.set(r, guildId));
+    res.auto_moderation_rules.forEach((r) => this.util.cache.automods.set(r));
+    res.integrations.forEach((r) => this.util.cache.integrations.set(r, guildId));
+    res.threads.forEach((r) =>
+     this.util.cache.threads.set({
+      ...(r as APIThreadChannel<ThreadChannelType>),
+      guild_id: guildId,
+     }),
+    );
+    res.guild_scheduled_events.forEach((r) => this.util.cache.events.set(r));
+
+    return {
+     application_commands: res.application_commands.map((r) => {
+      if (!r.guild_id) {
+       return this.util.cache.guildCommands.apiToR({ ...r, guild_id: r.guild_id! });
+      }
+      return this.util.cache.commands.apiToR(r);
+     }),
+     webhooks: res.webhooks.map((r) =>
+      this.util.cache.webhooks.apiToR({ ...r, guild_id: guildId }),
+     ),
+     users: res.users.map((r) => this.util.cache.users.apiToR(r)),
+     audit_log_entries: res.audit_log_entries.map((r) => this.util.cache.audits.apiToR(r, guildId)),
+     auto_moderation_rules: res.auto_moderation_rules.map((r) =>
+      this.util.cache.automods.apiToR(r),
+     ),
+     integrations: res.integrations.map((r) => this.util.cache.integrations.apiToR(r, guildId)),
+     threads: res.threads.map((r) =>
+      this.util.cache.threads.apiToR({
+       ...(r as APIThreadChannel<ThreadChannelType>),
+       guild_id: guildId,
+      }),
+     ),
+     guild_scheduled_events: res.guild_scheduled_events.map((r) =>
+      this.util.cache.events.apiToR(r),
+     ),
+    };
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1346,6 +1587,13 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getAutoModerationRules(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.automods.set(r);
+    });
+
+    return res.map((r) => this.util.cache.automods.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1478,6 +1726,13 @@ export default class GuildsAPI extends API {
 
   return this.base
    .getWebhooks(guildId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.webhooks.set({ ...r, guild_id: guildId });
+    });
+
+    return res.map((r) => this.util.cache.webhooks.apiToR({ ...r, guild_id: guildId }));
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1490,6 +1745,10 @@ export default class GuildsAPI extends API {
  getOnboarding(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getOnboarding(guildId)
+   .then((res) => {
+    this.util.cache.onboardings.set(res);
+    return this.util.cache.onboardings.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1527,6 +1786,13 @@ export default class GuildsAPI extends API {
  getSoundboardSounds(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getSoundboardSounds(guildId)
+   .then((res) => {
+    res.items.forEach((r) => {
+     this.util.cache.soundboards.set(r);
+    });
+
+    return { items: res.items.map((r) => this.util.cache.soundboards.apiToR(r)) };
+   })
    .catch((err) =>
     this.createError(
      { guildId },
@@ -1543,6 +1809,10 @@ export default class GuildsAPI extends API {
  ) {
   return this.base
    .getSoundboardSound(guildId, soundId)
+   .then((res) => {
+    this.util.cache.soundboards.set(res);
+    return this.util.cache.soundboards.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId },

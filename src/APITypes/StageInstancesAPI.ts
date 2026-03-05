@@ -57,7 +57,10 @@ export default class StageInstancesAPI extends API {
    return this.createError(
     { guildId: this.guildId, channelId: body.channel_id },
     { action: 'create stage instance', detail: origin, debug: 4, message: reason },
-    { errorMessage: 'Missing MentionEveryone permission for start notification', error: new Error() },
+    {
+     errorMessage: 'Missing MentionEveryone permission for start notification',
+     error: new Error(),
+    },
    );
   }
 
@@ -72,12 +75,13 @@ export default class StageInstancesAPI extends API {
    );
  }
 
- get(
-  channelId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ get(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .get(channelId)
+   .then((res) => {
+    this.cache.stages.set(res);
+    return this.cache.stages.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId: this.guildId, channelId },
@@ -134,10 +138,7 @@ export default class StageInstancesAPI extends API {
    );
  }
 
- async delete(
-  channelId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ async delete(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   const { allow: perms } = await getChannelPerms.call(
    this.cache,
    this.guildId,

@@ -1,23 +1,26 @@
-import type { logger as Logger } from '@ayako/utility';
+import type { Cache, logger as Logger } from '@ayako/utility';
 import { UsersAPI as DiscordUsersAPI, type Snowflake } from '@discordjs/core';
 
 import API from './API.js';
 
 export default class UsersAPI extends API {
  base: DiscordUsersAPI;
+ cache: Cache;
 
- constructor(token: string, logger: typeof Logger, guildId: string) {
+ constructor(token: string, logger: typeof Logger, guildId: string, cache: Cache) {
   super(token, logger, guildId);
 
   this.base = new DiscordUsersAPI(this.rest);
+  this.cache = cache;
  }
 
- get(
-  userId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ get(userId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .get(userId)
+   .then((res) => {
+    this.cache.users.set(res);
+    return this.cache.users.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { applicationId: this.appId, guildId: undefined },
@@ -30,6 +33,10 @@ export default class UsersAPI extends API {
  getCurrent({ origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getCurrent()
+   .then((res) => {
+    this.cache.users.set(res);
+    return this.cache.users.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { applicationId: this.appId, guildId: undefined },
@@ -54,10 +61,7 @@ export default class UsersAPI extends API {
    );
  }
 
- leaveGuild(
-  guildId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ leaveGuild(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .leaveGuild(guildId)
    .catch((err) =>
@@ -84,12 +88,13 @@ export default class UsersAPI extends API {
    );
  }
 
- getGuildMember(
-  guildId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ getGuildMember(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getGuildMember(guildId)
+   .then((res) => {
+    this.cache.members.set(res, guildId);
+    return this.cache.members.apiToR(res, guildId);
+   })
    .catch((err) =>
     this.createError(
      { applicationId: this.appId, guildId },
@@ -115,10 +120,7 @@ export default class UsersAPI extends API {
    );
  }
 
- createDM(
-  userId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ createDM(userId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .createDM(userId)
    .catch((err) =>

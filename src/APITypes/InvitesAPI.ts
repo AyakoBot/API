@@ -21,6 +21,10 @@ export default class InvitesAPI extends API {
  ) {
   return this.base
    .get(code, query)
+   .then((res) => {
+    this.cache.invites.set(res);
+    return this.cache.invites.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { inviteCode: code },

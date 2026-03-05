@@ -1,9 +1,5 @@
 import { type Cache, type logger as Logger, getChannelPerms } from '@ayako/utility';
-import {
- VoiceAPI as DiscordVoiceAPI,
- PermissionFlagsBits,
- type Snowflake,
-} from '@discordjs/core';
+import { VoiceAPI as DiscordVoiceAPI, PermissionFlagsBits, type Snowflake } from '@discordjs/core';
 
 import API from './API.js';
 
@@ -30,12 +26,13 @@ export default class VoiceAPI extends API {
    );
  }
 
- getUserVoiceState(
-  userId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ getUserVoiceState(userId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getUserVoiceState(this.guildId, userId)
+   .then((res) => {
+    this.cache.voices.set(res);
+    return this.cache.voices.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId: this.guildId },
@@ -48,6 +45,10 @@ export default class VoiceAPI extends API {
  getVoiceState({ origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getVoiceState(this.guildId)
+   .then((res) => {
+    this.cache.voices.set(res);
+    return this.cache.voices.apiToR(res);
+   })
    .catch((err) =>
     this.createError(
      { guildId: this.guildId },

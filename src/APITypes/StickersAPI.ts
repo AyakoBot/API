@@ -12,10 +12,7 @@ export default class StickersAPI extends API {
   this.base = new DiscordStickersAPI(this.rest);
  }
 
- getStickerPack(
-  packId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ getStickerPack(packId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .getStickerPack(packId)
    .catch((err) =>
@@ -39,10 +36,7 @@ export default class StickersAPI extends API {
    );
  }
 
- get(
-  stickerId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
- ) {
+ get(stickerId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
   return this.base
    .get(stickerId)
    .catch((err) =>

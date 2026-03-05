@@ -466,6 +466,13 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .getMessageReactions(channelId, messageId, emoji, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.users.set(r);
+    });
+
+    return res.map((r) => this.util.cache.users.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
@@ -1076,6 +1083,13 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .getMessages(channelId, query)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.messages.set(r, this.guildId);
+    });
+
+    return res.map((r) => this.util.cache.messages.apiToR(r, this.guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id!, channelId },
@@ -1148,6 +1162,14 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .getPins(channelId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.pins.set(channelId, r.id);
+     this.util.cache.messages.set(r, this.guildId);
+    });
+
+    return res.map((r) => this.util.cache.messages.apiToR(r, this.guildId));
+   })
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
@@ -1374,6 +1396,10 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .getMessage(channelId, messageId)
+   .then((res) => {
+    this.util.cache.messages.set(res, this.guildId);
+    return this.util.cache.messages.apiToR(res, this.guildId);
+   })
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
@@ -1555,6 +1581,13 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .getInvites(channelId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.invites.set(r);
+    });
+
+    return res.map((r) => this.util.cache.invites.apiToR(r));
+   })
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
@@ -1850,6 +1883,13 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .getWebhooks(channelId)
+   .then((res) => {
+    res.forEach((r) => {
+     this.util.cache.webhooks.set(r);
+    });
+
+    return res.map((r) => this.util.cache.webhooks.apiToR({ ...r, guild_id: channel.guild_id! }));
+   })
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
