@@ -26,7 +26,7 @@ export default abstract class API extends EventEmitter {
  static hasPerm(permissions: bigint, permission: bigint): boolean {
   return (
    (permissions & permission) === permission ||
-   (permission & PermissionFlagsBits.Administrator) === PermissionFlagsBits.Administrator
+   (permissions & PermissionFlagsBits.Administrator) === PermissionFlagsBits.Administrator
   );
  }
 
