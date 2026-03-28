@@ -100,6 +100,20 @@ export default class PermissionUtility {
   return { response: true, debug: 3 };
  }
 
+ async canDeleteChannel(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
+  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+
+  if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
+   return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
+  }
+
+  if (!API.hasPerm(perms, PermissionFlagsBits.ManageChannels)) {
+   return { response: false, debug: 2, message: 'Missing ManageChannels permission' };
+  }
+
+  return { response: true, debug: 3 };
+ }
+
  async canDeleteMessageReaction(
   guildId: string,
   channelId: string,

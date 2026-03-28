@@ -482,6 +482,37 @@ export default class ChannelsAPI extends API {
    );
  }
 
+ async delete(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
+  const channel = await this.util.cache.channels.get(channelId);
+
+  if (!channel) {
+   return this.createError(
+    { guildId: undefined, channelId },
+    { action: 'delete channel', detail: origin, debug: 0, message: reason },
+    { errorMessage: 'Channel not found in cache', error: new Error() },
+   );
+  }
+
+  const can = await this.util.canDeleteChannel(channel.guild_id, channelId);
+  if (!can.response) {
+   return this.createError(
+    { guildId: channel.guild_id, channelId },
+    { action: 'delete channel', detail: origin, debug: can.debug, message: reason },
+    { errorMessage: can.message, error: new Error() },
+   );
+  }
+
+  return this.base
+   .delete(channelId, { reason: `${reason} | Origin: ${origin}` })
+   .catch((err) =>
+    this.createError(
+     { guildId: channel.guild_id, channelId },
+     { action: 'delete channel', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
  async deleteMessageReaction(
   channelId: Snowflake,
   messageId: Snowflake,
