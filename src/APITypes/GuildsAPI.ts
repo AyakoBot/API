@@ -157,6 +157,7 @@ export default class GuildsAPI extends API {
 
   return this.base
    .createChannel(guildId, body, { reason })
+   .then((res) => this.util.cache.channels.apiToR(res as APIGuildChannel<RChannelTypes>))
    .catch((err) =>
     this.createError(
      { guildId },

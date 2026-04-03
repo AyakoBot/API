@@ -1667,6 +1667,7 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .createThread(channelId, body, messageId, { reason })
+   .then((res) => this.util.cache.threads.apiToR({ ...res, guild_id: channel.guild_id }))
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
@@ -1724,6 +1725,7 @@ export default class ChannelsAPI extends API {
 
   return this.base
    .createForumThread(channelId, body, { reason })
+   .then((res) => this.util.cache.threads.apiToR({ ...res, guild_id: channel.guild_id }))
    .catch((err) =>
     this.createError(
      { guildId: channel.guild_id, channelId },
