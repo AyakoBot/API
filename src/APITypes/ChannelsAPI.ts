@@ -333,7 +333,10 @@ export default class ChannelsAPI extends API {
   message: Parameters<DiscordChannelsAPI['createMessage']>[1],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -391,7 +394,9 @@ export default class ChannelsAPI extends API {
   { origin, reason }: { origin: string; reason: string },
  ) {
   const msg = await this.util.cache.messages.get(messageId);
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
 
   if ((!msg || !msg.channel_id) && (!channel || !channel.guild_id)) {
    return this.createError(
@@ -446,7 +451,10 @@ export default class ChannelsAPI extends API {
   query: RESTGetAPIChannelMessageReactionUsersQuery,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -483,7 +491,9 @@ export default class ChannelsAPI extends API {
  }
 
  async delete(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
 
   if (!channel) {
    return this.createError(
@@ -519,7 +529,10 @@ export default class ChannelsAPI extends API {
   emoji: EmojiResolvable,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -558,7 +571,10 @@ export default class ChannelsAPI extends API {
   messageId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -593,7 +609,10 @@ export default class ChannelsAPI extends API {
   emoji: EmojiResolvable,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -672,7 +691,10 @@ export default class ChannelsAPI extends API {
   body: RESTPatchAPIChannelJSONBody,
   { reason, origin }: { reason: string; origin: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1094,7 +1116,10 @@ export default class ChannelsAPI extends API {
   query: RESTGetAPIChannelMessagesQuery | undefined,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1131,7 +1156,10 @@ export default class ChannelsAPI extends API {
  }
 
  async showTyping(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1161,7 +1189,10 @@ export default class ChannelsAPI extends API {
  }
 
  async getPins(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1215,7 +1246,10 @@ export default class ChannelsAPI extends API {
   messageId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1261,7 +1295,10 @@ export default class ChannelsAPI extends API {
   messageId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1308,7 +1345,9 @@ export default class ChannelsAPI extends API {
   { origin, reason }: { origin: string; reason: string },
  ) {
   const msg = await this.util.cache.messages.get(messageId);
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
 
   if ((!msg || !msg.channel_id) && (!channel || !channel.guild_id)) {
    return this.createError(
@@ -1349,7 +1388,10 @@ export default class ChannelsAPI extends API {
   messageIds: Snowflake[],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1395,7 +1437,10 @@ export default class ChannelsAPI extends API {
   messageId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1445,7 +1490,10 @@ export default class ChannelsAPI extends API {
   messageId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1580,7 +1628,10 @@ export default class ChannelsAPI extends API {
  }
 
  async getInvites(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1634,7 +1685,10 @@ export default class ChannelsAPI extends API {
   messageId: Snowflake | undefined,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1682,7 +1736,10 @@ export default class ChannelsAPI extends API {
   body: Parameters<DiscordChannelsAPI['createForumThread']>[1],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1741,7 +1798,10 @@ export default class ChannelsAPI extends API {
   query: RESTGetAPIChannelThreadsArchivedQuery | undefined,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1791,7 +1851,10 @@ export default class ChannelsAPI extends API {
   query: RESTGetAPIChannelThreadsArchivedQuery | undefined,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1842,7 +1905,10 @@ export default class ChannelsAPI extends API {
   body: RESTPostAPIChannelWebhookJSONBody,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1884,7 +1950,10 @@ export default class ChannelsAPI extends API {
  }
 
  async getWebhooks(channelId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1938,7 +2007,10 @@ export default class ChannelsAPI extends API {
   body: RESTPutAPIChannelPermissionJSONBody,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -1984,7 +2056,10 @@ export default class ChannelsAPI extends API {
   overwriteId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
@@ -2030,7 +2105,10 @@ export default class ChannelsAPI extends API {
   body: Parameters<DiscordChannelsAPI['sendSoundboardSound']>[1],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel = await this.util.cache.channels.get(channelId);
+  const channel =
+   (await this.util.cache.channels.get(channelId)) ||
+   (await this.util.cache.threads.get(channelId));
+
   if (!channel) {
    return this.createError(
     { guildId: undefined, channelId },
