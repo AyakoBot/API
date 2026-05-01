@@ -100,6 +100,19 @@ export default class PermissionUtility {
   return { response: true, debug: 3 };
  }
 
+ async canReactWithExternalEmojis(
+  guildId: string,
+  channelId: string,
+ ): Promise<Disallowed | Allowed> {
+  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+
+  if (!API.hasPerm(perms, PermissionFlagsBits.UseExternalEmojis)) {
+   return { response: false, debug: 1, message: 'Missing UseExternalEmojis permission' };
+  }
+
+  return { response: true, debug: 2 };
+ }
+
  async canDeleteChannel(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
   const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
 

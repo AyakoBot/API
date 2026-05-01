@@ -21,6 +21,7 @@ import type { EmojiResolvable } from '../types/index.js';
 
 import API from './API.js';
 import PermissionUtility from './ChannelPermissionsUtility.js';
+import RequestHandlerError from './RequestHandlerError.js';
 
 export default class ChannelsAPI extends API {
  util: PermissionUtility;
@@ -404,7 +405,7 @@ export default class ChannelsAPI extends API {
     { action: 'edit message', detail: origin, debug: 0, message: reason },
     {
      errorMessage:
-      'Attempted to send message to a channel that is not in a guild via editMessage API method. Use editDirectMessage for DMs instead.',
+      'Attempted to edit a message i a channel that is not in a guild via editMessage API method. Use editDirectMessage for DMs instead.',
      error: new Error(),
     },
    );
@@ -524,32 +525,16 @@ export default class ChannelsAPI extends API {
  }
 
  async deleteMessageReaction(
+  guildId: Snowflake,
   channelId: Snowflake,
   messageId: Snowflake,
   emoji: EmojiResolvable,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const channel =
-   (await this.util.cache.channels.get(channelId)) ||
-   (await this.util.cache.threads.get(channelId));
-
-  if (!channel) {
-   return this.createError(
-    { guildId: undefined, channelId },
-    { action: 'delete message reaction', detail: origin, debug: 0, message: reason },
-    { errorMessage: 'Channel not found in cache', error: new Error() },
-   );
-  }
-
-  const can = await this.util.canDeleteMessageReaction(
-   channel.guild_id,
-   channelId,
-   messageId,
-   emoji,
-  );
+  const can = await this.util.canDeleteMessageReaction(guildId, channelId, messageId, emoji);
   if (!can.response) {
    return this.createError(
-    { guildId: channel.guild_id, channelId },
+    { guildId, channelId },
     { action: 'delete own message reaction', detail: origin, debug: can.debug, message: reason },
     { errorMessage: can.message, error: new Error() },
    );
@@ -559,8 +544,25 @@ export default class ChannelsAPI extends API {
    .deleteOwnMessageReaction(channelId, messageId, emoji)
    .catch((err) =>
     this.createError(
-     { guildId: channel.guild_id, channelId },
+     { guildId, channelId },
      { action: 'delete own message reaction', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
+ async deleteDirectMessageReaction(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  emoji: EmojiResolvable,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .deleteOwnMessageReaction(channelId, messageId, emoji)
+   .catch((err) =>
+    this.createError(
+     { guildId: undefined, channelId },
+     { action: 'delete DM message reaction', detail: origin, debug: -1, message: reason },
      { errorMessage: err.message, error: err },
     ),
    );
@@ -654,10 +656,10 @@ export default class ChannelsAPI extends API {
   guildId: Snowflake,
   channelId: Snowflake,
   messageId: Snowflake,
-  emoji: EmojiResolvable,
+  emoji: { main: EmojiResolvable; alt: EmojiResolvable },
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const can = await this.util.canAddMessageReaction(guildId, channelId, emoji);
+  const can = await this.util.canAddMessageReaction(guildId, channelId, emoji.alt);
   if (!can.response) {
    return this.createError(
     { guildId, channelId },
@@ -666,12 +668,36 @@ export default class ChannelsAPI extends API {
    );
   }
 
+  const canExternal = await this.util.canReactWithExternalEmojis(guildId, channelId);
+  const usedEmoji = canExternal.response ? emoji.main : emoji.alt;
+
   return this.base
-   .addMessageReaction(channelId, messageId, emoji)
+   .addMessageReaction(channelId, messageId, usedEmoji)
    .catch((err) =>
     this.createError(
      { guildId, channelId },
      { action: 'add message reaction', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   )
+   .then((r) => {
+    if (r instanceof RequestHandlerError) return r;
+    return usedEmoji;
+   });
+ }
+
+ async addDirectMessageReaction(
+  channelId: Snowflake,
+  messageId: Snowflake,
+  emoji: EmojiResolvable,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .addMessageReaction(channelId, messageId, emoji)
+   .catch((err) =>
+    this.createError(
+     { guildId: undefined, channelId },
+     { action: 'add DM message reaction', detail: origin, debug: -1, message: reason },
      { errorMessage: err.message, error: err },
     ),
    );
@@ -1111,6 +1137,22 @@ export default class ChannelsAPI extends API {
    );
  }
 
+ async getDirectMessages(
+  channelId: Snowflake,
+  query: RESTGetAPIChannelMessagesQuery | undefined,
+  { origin, reason }: { origin: string; reason: string },
+ ) {
+  return this.base
+   .getMessages(channelId, query)
+   .catch((err) =>
+    this.createError(
+     { guildId: undefined, channelId },
+     { action: 'get DM messages', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
  async getMessages(
   channelId: Snowflake,
   query: RESTGetAPIChannelMessagesQuery | undefined,
@@ -1141,10 +1183,13 @@ export default class ChannelsAPI extends API {
    .getMessages(channelId, query)
    .then((res) => {
     res.forEach((r) => {
-     this.util.cache.messages.set(r, this.guildId);
+     this.util.cache.users.set(r.author);
     });
 
-    return res.map((r) => this.util.cache.messages.apiToR(r, this.guildId));
+    return res.map((r) => ({
+     ...this.util.cache.messages.apiToR(r, this.guildId),
+     user: this.util.cache.users.apiToR(r.author),
+    }));
    })
    .catch((err) =>
     this.createError(
