@@ -1,4 +1,9 @@
-import { type Cache, type logger as Logger, getChannelPerms } from '@ayako/utility';
+import {
+ type Cache,
+ type logger as Logger,
+ type MakeRequired,
+ getChannelPerms,
+} from '@ayako/utility';
 import { VoiceAPI as DiscordVoiceAPI, PermissionFlagsBits, type Snowflake } from '@discordjs/core';
 
 import API from './API.js';
@@ -60,7 +65,7 @@ export default class VoiceAPI extends API {
 
  async editUserVoiceState(
   userId: Snowflake,
-  body: Parameters<DiscordVoiceAPI['editUserVoiceState']>[2],
+  body: MakeRequired<Parameters<DiscordVoiceAPI['editUserVoiceState']>[2], 'channel_id'>,
   { origin, reason }: { origin: string; reason: string },
  ) {
   const { allow: perms } = await getChannelPerms.call(
