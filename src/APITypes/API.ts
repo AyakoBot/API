@@ -1,8 +1,9 @@
 import type { logger as Logger } from '@ayako/utility';
 import { PermissionFlagsBits } from '@discordjs/core';
 import { REST } from '@discordjs/rest';
-
 import { EventEmitter } from 'events';
+import { inspect } from 'util';
+
 import type { Options, RequestHandlerErrorType } from '../types/index.js';
 import RequestHandlerError from './RequestHandlerError.js';
 
@@ -46,7 +47,11 @@ export default abstract class API extends EventEmitter {
              : `guild ${err.options.guildId}`
    }. Detail: ${err.detail}. Debug: ${err.debug}. Message: ${err.reason}. Error: ${err.errorMessage}`,
   );
+
+  this.logger.warn(err.errorMessage);
+  this.logger.warn(err.action, err.detail, err.errorMessage, err.cause, err.debug);
   this.logger.warn(err.error?.message, err.error?.cause, err.error?.stack);
+  if (err.errorMessage?.includes('50006')) this.logger.error(inspect(err));
 
   this.emit('error', err);
  }
