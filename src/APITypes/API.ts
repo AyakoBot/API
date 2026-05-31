@@ -1,10 +1,12 @@
-import type { logger as Logger } from '@ayako/utility';
-import { PermissionFlagsBits } from '@discordjs/core';
-import { REST } from '@discordjs/rest';
 import { EventEmitter } from 'events';
 import { inspect } from 'util';
 
+import type { logger as Logger } from '@ayako/utility';
+import { PermissionFlagsBits } from '@discordjs/core';
+import { REST } from '@discordjs/rest';
+
 import type { Options, RequestHandlerErrorType } from '../types/index.js';
+
 import RequestHandlerError from './RequestHandlerError.js';
 
 export default abstract class API extends EventEmitter {

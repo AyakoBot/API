@@ -1,7 +1,8 @@
-import type { Cache, logger as Logger } from '@ayako/utility';
-import { GatewayAPI, API as DiscordAPI } from '@discordjs/core';
-import { REST } from '@discordjs/rest';
 import { EventEmitter } from 'events';
+
+import type { Cache, logger as Logger } from '@ayako/utility';
+import { API as DiscordAPI, GatewayAPI } from '@discordjs/core';
+import { REST } from '@discordjs/rest';
 
 import ApplicationCommandsAPI from './APITypes/ApplicationCommandsAPI.js';
 import ApplicationsAPI from './APITypes/ApplicationsAPI.js';

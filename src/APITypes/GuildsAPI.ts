@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type {
  Cache,
  logger as Logger,
@@ -20,12 +21,13 @@ import {
  type ThreadChannelType,
 } from '@discordjs/core';
 
-import API from './API.js';
-import GuildPermissionsUtility from './GuildPermissionsUtility.js';
+import type { RAuditLog } from '../../../Utility/dist/CacheClasses/auditlog.js';
 import type { REventUser } from '../../../Utility/dist/CacheClasses/eventUser.js';
 import type { RequestHandlerErrorType } from '../types/index.js';
+
+import API from './API.js';
+import GuildPermissionsUtility from './GuildPermissionsUtility.js';
 import type RequestHandlerError from './RequestHandlerError.js';
-import type { RAuditLog } from '../../../Utility/dist/CacheClasses/auditlog.js';
 
 export default class GuildsAPI extends API {
  util: GuildPermissionsUtility;
