@@ -1,4 +1,4 @@
-import { type Cache, type logger as Logger, getGuildPerms } from '@ayako/utility';
+import { type Cache, type logger as Logger, getGuildPerms, getRoleHierarchy } from '@ayako/utility';
 import { type GuildsAPI, PermissionFlagsBits } from '@discordjs/core';
 
 import API from './API.js';
@@ -198,7 +198,18 @@ export default class GuildPermissionsUtility {
  async canEditMember(
   guildId: string,
   body: Parameters<GuildsAPI['editMember']>[2],
+  userId: string,
  ): Promise<Disallowed | Allowed> {
+  const { response: isAboveTarget } = await getRoleHierarchy.call(
+   this.cache,
+   guildId,
+   this.botId,
+   userId,
+  );
+  if (!isAboveTarget) {
+   return { response: false, debug: 0, message: 'Bot role <= target user role' };
+  }
+
   const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
 
   if (body?.nick !== undefined && !API.hasPerm(perms, PermissionFlagsBits.ManageNicknames)) {

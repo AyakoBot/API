@@ -325,7 +325,7 @@ export default class GuildsAPI extends API {
   body: Parameters<DiscordGuildsAPI['editMember']>[2],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const can = await this.util.canEditMember(guildId, body);
+  const can = await this.util.canEditMember(guildId, body, userId);
   if (!can.response) {
    return this.createError(
     { guildId },
