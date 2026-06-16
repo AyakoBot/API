@@ -1112,11 +1112,9 @@ export default class ChannelsAPI extends API {
   }
 
   if (
-   ![
-    ChannelType.PublicThread,
-    ChannelType.PrivateThread,
-    ChannelType.AnnouncementThread,
-   ].includes(channel.type) &&
+   ![ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.AnnouncementThread].includes(
+    channel.type,
+   ) &&
    !!body.applied_tags
   ) {
    return this.createError(
