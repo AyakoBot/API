@@ -55,7 +55,7 @@ export default abstract class API extends EventEmitter {
   this.logger.warn(err.error?.message, err.error?.cause, err.error?.stack);
   if (err.errorMessage?.includes('50006')) this.logger.error(inspect(err));
 
-  this.emit('error', err);
+  if (this.listenerCount('error') > 0) this.emit('error', err);
  }
 
  protected createError<T extends RequestHandlerErrorType>(
