@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { inspect } from 'util';
 
-import type { logger as Logger } from '@ayako/utility';
+import { type logger as Logger, getBotIdFromToken } from '@ayako/utility';
 import { PermissionFlagsBits } from '@discordjs/core';
 import { REST } from '@discordjs/rest';
 
@@ -21,7 +21,7 @@ export default abstract class API extends EventEmitter {
    api: `http://${process.argv.includes('--local') ? 'localhost' : 'nirn'}:8080/api`,
   });
   this.rest.setToken(token);
-  this.appId = Buffer.from(token.replace('Bot ', '').split('.')[0], 'base64').toString();
+  this.appId = getBotIdFromToken(token);
   this.logger = logger;
   this.guildId = guildId;
  }
