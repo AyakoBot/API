@@ -50,9 +50,10 @@ export default abstract class API extends EventEmitter {
    }. Detail: ${err.detail}. Debug: ${err.debug}. Message: ${err.reason}. Error: ${err.errorMessage}`,
   );
 
-  this.logger.warn(err.errorMessage);
-  this.logger.warn(err.action, err.detail, err.errorMessage, err.cause, err.debug);
-  this.logger.warn(err.error?.message, err.error?.cause, err.error?.stack);
+  const log = err.silent ? this.logger.debug : this.logger.warn;
+  log(err.errorMessage);
+  log(err.action, err.detail, err.errorMessage, err.cause, err.debug);
+  log(err.error?.message, err.error?.cause, err.error?.stack);
   if (err.errorMessage?.includes('50006')) this.logger.error(inspect(err));
 
   if (this.listenerCount('error') > 0) this.emit('error', err);
@@ -65,7 +66,8 @@ export default abstract class API extends EventEmitter {
    detail,
    debug,
    message,
-  }: { action: string; detail: string; debug: number; message: string },
+   silent,
+  }: { action: string; detail: string; debug: number; message: string; silent?: boolean },
   { errorMessage, error }: { errorMessage: string; error: Error },
  ) {
   const err = new RequestHandlerError(options, errorMessage)
@@ -75,7 +77,8 @@ export default abstract class API extends EventEmitter {
    .setReason(message)
    .setDebug(debug)
    .setError(error)
-   .setAppId(this.appId);
+   .setAppId(this.appId)
+   .setSilent(silent ?? false);
 
   this.handleError(err);
 

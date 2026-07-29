@@ -17,6 +17,8 @@ export default class RequestHandlerError<T extends RequestHandlerErrorType> {
  // while a number hints at the failed validator index
  debug: -1 | number | null = null;
 
+ silent: boolean = false;
+
  constructor(options: Options<T>, message: string) {
   this.options = options;
   this.cause =
@@ -61,6 +63,11 @@ export default class RequestHandlerError<T extends RequestHandlerErrorType> {
 
  setAppId(appId: string) {
   this.appId = appId;
+  return this;
+ }
+
+ setSilent(silent: boolean) {
+  this.silent = silent;
   return this;
  }
 }
