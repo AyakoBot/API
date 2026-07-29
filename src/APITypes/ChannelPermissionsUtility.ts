@@ -1,9 +1,11 @@
-import { type Cache, type logger as Logger, getChannelPerms } from '@ayako/utility';
+import { type Cache, type logger as Logger } from '@ayako/utility';
 import { type ChannelsAPI, PermissionFlagsBits } from '@discordjs/core';
+import type { REST } from '@discordjs/rest';
 
 import type { EmojiResolvable } from '../types/index.js';
 
 import API from './API.js';
+import PermissionHydrator from './PermissionHydrator.js';
 
 type Disallowed = { response: false; debug: number; message: string };
 type Allowed = { response: true; debug: number };
@@ -12,11 +14,13 @@ export default class PermissionUtility {
  logger: typeof Logger;
  cache: Cache;
  botId: string;
+ hydrator: PermissionHydrator;
 
- constructor(logger: typeof Logger, cache: Cache, botId: string) {
+ constructor(logger: typeof Logger, cache: Cache, botId: string, rest: REST) {
   this.logger = logger;
   this.cache = cache;
   this.botId = botId;
+  this.hydrator = new PermissionHydrator(cache, rest);
  }
 
  async canCreateMessage(
@@ -24,7 +28,7 @@ export default class PermissionUtility {
   channelId: string,
   payload: Parameters<ChannelsAPI['createMessage']>[1],
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -73,7 +77,7 @@ export default class PermissionUtility {
   channelId: string,
   authorId: string | undefined,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -87,7 +91,7 @@ export default class PermissionUtility {
  }
 
  async canGetMessageReactions(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ReadMessageHistory)) {
    return { response: false, debug: 1, message: 'Missing ReadMessageHistory permission' };
@@ -104,7 +108,7 @@ export default class PermissionUtility {
   guildId: string,
   channelId: string,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.UseExternalEmojis)) {
    return { response: false, debug: 1, message: 'Missing UseExternalEmojis permission' };
@@ -114,7 +118,7 @@ export default class PermissionUtility {
  }
 
  async canDeleteChannel(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -138,7 +142,7 @@ export default class PermissionUtility {
    return { response: false, debug: canView.debug, message: canView.message };
   }
 
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
   const canManageMessages = API.hasPerm(perms, PermissionFlagsBits.ManageMessages);
 
   if (!canManageMessages) {
@@ -171,7 +175,7 @@ export default class PermissionUtility {
   channelId: string,
   emoji: EmojiResolvable,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.AddReactions)) {
    return { response: false, debug: 1, message: 'Missing AddReactions permission' };
@@ -195,7 +199,7 @@ export default class PermissionUtility {
  }
 
  async canEdit(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -209,7 +213,7 @@ export default class PermissionUtility {
  }
 
  async canGetMessages(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -231,7 +235,7 @@ export default class PermissionUtility {
  }
 
  async canPinMessage(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -253,7 +257,7 @@ export default class PermissionUtility {
   channelId: string,
   authorId: string | undefined,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -275,7 +279,7 @@ export default class PermissionUtility {
  }
 
  async canBulkDeleteMessages(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -297,7 +301,7 @@ export default class PermissionUtility {
   channelId: string,
   authorId: string | undefined,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -321,7 +325,7 @@ export default class PermissionUtility {
  }
 
  async canFollowAnnouncements(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageWebhooks)) {
    return { response: false, debug: 1, message: 'Missing ManageWebhooks permission' };
@@ -331,7 +335,7 @@ export default class PermissionUtility {
  }
 
  async canCreateInvite(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.CreateInstantInvite)) {
    return { response: false, debug: 1, message: 'Missing CreateInstantInvite permission' };
@@ -341,7 +345,7 @@ export default class PermissionUtility {
  }
 
  async canGetInvites(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageChannels)) {
    return { response: false, debug: 1, message: 'Missing ManageChannels permission' };
@@ -355,7 +359,7 @@ export default class PermissionUtility {
   channelId: string,
   isPrivate: boolean,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -379,7 +383,7 @@ export default class PermissionUtility {
   channelId: string,
   payload: Parameters<ChannelsAPI['createForumThread']>[1],
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return { response: false, debug: 1, message: 'Missing ViewChannel permission' };
@@ -419,7 +423,7 @@ export default class PermissionUtility {
   channelId: string,
   isPrivate: boolean,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ReadMessageHistory)) {
    return { response: false, debug: 1, message: 'Missing ReadMessageHistory permission' };
@@ -440,7 +444,7 @@ export default class PermissionUtility {
   guildId: string,
   channelId: string,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ReadMessageHistory)) {
    return { response: false, debug: 1, message: 'Missing ReadMessageHistory permission' };
@@ -450,7 +454,7 @@ export default class PermissionUtility {
  }
 
  async canCreateWebhook(guildId: string, channelId: string): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageWebhooks)) {
    return { response: false, debug: 1, message: 'Missing ManageWebhooks permission' };
@@ -467,7 +471,7 @@ export default class PermissionUtility {
   guildId: string,
   channelId: string,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageRoles)) {
    return { response: false, debug: 1, message: 'Missing ManageRoles permission' };
@@ -488,7 +492,7 @@ export default class PermissionUtility {
   channelId: string,
   sourceGuildId: string | undefined,
  ): Promise<Disallowed | Allowed> {
-  const { allow: perms } = await getChannelPerms.call(this.cache, guildId, this.botId, channelId);
+  const perms = await this.hydrator.channelPerms(guildId, this.botId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.Connect)) {
    return { response: false, debug: 1, message: 'Missing Connect permission' };

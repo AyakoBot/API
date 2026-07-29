@@ -12,6 +12,7 @@ import InteractionsAPI from './APITypes/InteractionsAPI.js';
 import InvitesAPI from './APITypes/InvitesAPI.js';
 import MonetizationAPI from './APITypes/MonetizationAPI.js';
 import OAuth2API from './APITypes/OAuth2API.js';
+import PermissionHydrator from './APITypes/PermissionHydrator.js';
 import PollAPI from './APITypes/PollAPI.js';
 import RoleConnectionsAPI from './APITypes/RoleConnectionsAPI.js';
 import SoundboardSoundsAPI from './APITypes/SoundboardSoundsAPI.js';
@@ -48,6 +49,7 @@ export default class API extends EventEmitter {
  api: DiscordAPI;
  rest: REST;
  botId: string;
+ hydrator: PermissionHydrator;
 
  constructor(token: string, logger: typeof Logger, cache: Cache, guildId: string) {
   super();
@@ -59,6 +61,7 @@ export default class API extends EventEmitter {
   }).setToken(token.includes('Bot ') ? token.replace('Bot ', '') : token);
   this.api = new DiscordAPI(this.rest);
   this.botId = new Buffer(token.replace('Bot ', '').split('.')[0], 'base64').toString();
+  this.hydrator = new PermissionHydrator(cache, this.rest);
 
   this.applicationCommands = new ApplicationCommandsAPI(token, this.logger, guildId);
   this.applications = new ApplicationsAPI(token, this.logger, guildId);

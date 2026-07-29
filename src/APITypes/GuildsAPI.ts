@@ -37,7 +37,7 @@ export default class GuildsAPI extends API {
   super(token, logger, guildId);
 
   this.base = new DiscordGuildsAPI(this.rest);
-  this.util = new GuildPermissionsUtility(logger, cache, this.appId);
+  this.util = new GuildPermissionsUtility(logger, cache, this.appId, this.rest);
  }
 
  get(
@@ -253,7 +253,7 @@ export default class GuildsAPI extends API {
  getMember(
   guildId: Snowflake,
   userId: Snowflake,
-  { origin, reason }: { origin: string; reason: string },
+  { origin, reason, silent }: { origin: string; reason: string; silent?: boolean },
  ) {
   return this.base
    .getMember(guildId, userId)
@@ -264,7 +264,7 @@ export default class GuildsAPI extends API {
    .catch((err) =>
     this.createError(
      { guildId },
-     { action: 'get guild member', detail: origin, debug: -1, message: reason },
+     { action: 'get guild member', detail: origin, debug: -1, message: reason, silent },
      { errorMessage: err.message, error: err },
     ),
    );

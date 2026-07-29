@@ -1,17 +1,20 @@
-import { type Cache, type logger as Logger, getChannelPerms, getGuildPerms } from '@ayako/utility';
+import { type Cache, type logger as Logger } from '@ayako/utility';
 import { InvitesAPI as DiscordInvitesAPI, PermissionFlagsBits } from '@discordjs/core';
 
 import API from './API.js';
+import PermissionHydrator from './PermissionHydrator.js';
 
 export default class InvitesAPI extends API {
  base: DiscordInvitesAPI;
  private cache: Cache;
+ private hydrator: PermissionHydrator;
 
  constructor(token: string, logger: typeof Logger, guildId: string, cache: Cache) {
   super(token, logger, guildId);
 
   this.base = new DiscordInvitesAPI(this.rest);
   this.cache = cache;
+  this.hydrator = new PermissionHydrator(cache, this.rest);
  }
 
  get(
@@ -40,12 +43,7 @@ export default class InvitesAPI extends API {
   { origin, reason }: { origin: string; reason: string },
  ) {
   if (channelId) {
-   const { allow: perms } = await getChannelPerms.call(
-    this.cache,
-    this.guildId,
-    this.appId,
-    channelId,
-   );
+   const perms = await this.hydrator.channelPerms(this.guildId, this.appId, channelId);
 
    if (!API.hasPerm(perms, PermissionFlagsBits.ManageChannels)) {
     return this.createError(
@@ -55,7 +53,7 @@ export default class InvitesAPI extends API {
     );
    }
   } else {
-   const { response: perms } = await getGuildPerms.call(this.cache, this.guildId, this.appId);
+   const perms = await this.hydrator.guildPerms(this.guildId, this.appId);
 
    if (!API.hasPerm(perms, PermissionFlagsBits.ManageGuild)) {
     return this.createError(

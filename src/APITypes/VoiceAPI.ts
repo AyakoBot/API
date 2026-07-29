@@ -1,22 +1,20 @@
-import {
- type Cache,
- type logger as Logger,
- type MakeRequired,
- getChannelPerms,
-} from '@ayako/utility';
+import { type Cache, type logger as Logger, type MakeRequired } from '@ayako/utility';
 import { VoiceAPI as DiscordVoiceAPI, PermissionFlagsBits, type Snowflake } from '@discordjs/core';
 
 import API from './API.js';
+import PermissionHydrator from './PermissionHydrator.js';
 
 export default class VoiceAPI extends API {
  base: DiscordVoiceAPI;
  private cache: Cache;
+ private hydrator: PermissionHydrator;
 
  constructor(token: string, logger: typeof Logger, guildId: string, cache: Cache) {
   super(token, logger, guildId);
 
   this.base = new DiscordVoiceAPI(this.rest);
   this.cache = cache;
+  this.hydrator = new PermissionHydrator(cache, this.rest);
  }
 
  getVoiceRegions({ origin, reason }: { origin: string; reason: string }) {
@@ -68,12 +66,7 @@ export default class VoiceAPI extends API {
   body: MakeRequired<Parameters<DiscordVoiceAPI['editUserVoiceState']>[2], 'channel_id'>,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const { allow: perms } = await getChannelPerms.call(
-   this.cache,
-   this.guildId,
-   this.appId,
-   body.channel_id,
-  );
+  const perms = await this.hydrator.channelPerms(this.guildId, this.appId, body.channel_id);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.MuteMembers)) {
    return this.createError(
@@ -99,12 +92,7 @@ export default class VoiceAPI extends API {
   { origin, reason }: { origin: string; reason: string },
  ) {
   if (body?.request_to_speak_timestamp && body.channel_id) {
-   const { allow: perms } = await getChannelPerms.call(
-    this.cache,
-    this.guildId,
-    this.appId,
-    body.channel_id,
-   );
+   const perms = await this.hydrator.channelPerms(this.guildId, this.appId, body.channel_id);
 
    if (!API.hasPerm(perms, PermissionFlagsBits.RequestToSpeak)) {
     return this.createError(

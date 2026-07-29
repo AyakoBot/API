@@ -1,17 +1,18 @@
-import { type Cache, type logger as Logger, getChannelPerms } from '@ayako/utility';
+import { type Cache, type logger as Logger } from '@ayako/utility';
 import { PollAPI as DiscordPollAPI, PermissionFlagsBits, type Snowflake } from '@discordjs/core';
 
 import API from './API.js';
+import PermissionHydrator from './PermissionHydrator.js';
 
 export default class PollAPI extends API {
  base: DiscordPollAPI;
- private cache: Cache;
+ private hydrator: PermissionHydrator;
 
  constructor(token: string, logger: typeof Logger, guildId: string, cache: Cache) {
   super(token, logger, guildId);
 
   this.base = new DiscordPollAPI(this.rest);
-  this.cache = cache;
+  this.hydrator = new PermissionHydrator(cache, this.rest);
  }
 
  async getAnswerVoters(
@@ -21,12 +22,7 @@ export default class PollAPI extends API {
   query: Parameters<DiscordPollAPI['getAnswerVoters']>[3],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const { allow: perms } = await getChannelPerms.call(
-   this.cache,
-   this.guildId,
-   this.appId,
-   channelId,
-  );
+  const perms = await this.hydrator.channelPerms(this.guildId, this.appId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewChannel)) {
    return this.createError(
@@ -60,12 +56,7 @@ export default class PollAPI extends API {
   messageId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const { allow: perms } = await getChannelPerms.call(
-   this.cache,
-   this.guildId,
-   this.appId,
-   channelId,
-  );
+  const perms = await this.hydrator.channelPerms(this.guildId, this.appId, channelId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageMessages)) {
    return this.createError(

@@ -1,4 +1,4 @@
-import { type Cache, type logger as Logger, getChannelPerms } from '@ayako/utility';
+import { type Cache, type logger as Logger } from '@ayako/utility';
 import {
  ThreadsAPI as DiscordThreadsAPI,
  PermissionFlagsBits,
@@ -6,16 +6,19 @@ import {
 } from '@discordjs/core';
 
 import API from './API.js';
+import PermissionHydrator from './PermissionHydrator.js';
 
 export default class ThreadsAPI extends API {
  base: DiscordThreadsAPI;
  private cache: Cache;
+ private hydrator: PermissionHydrator;
 
  constructor(token: string, logger: typeof Logger, guildId: string, cache: Cache) {
   super(token, logger, guildId);
 
   this.base = new DiscordThreadsAPI(this.rest);
   this.cache = cache;
+  this.hydrator = new PermissionHydrator(cache, this.rest);
  }
 
  join(threadId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
@@ -35,12 +38,7 @@ export default class ThreadsAPI extends API {
   userId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const { allow: perms } = await getChannelPerms.call(
-   this.cache,
-   this.guildId,
-   this.appId,
-   threadId,
-  );
+  const perms = await this.hydrator.channelPerms(this.guildId, this.appId, threadId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.SendMessagesInThreads)) {
    return this.createError(
@@ -78,12 +76,7 @@ export default class ThreadsAPI extends API {
   userId: Snowflake,
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const { allow: perms } = await getChannelPerms.call(
-   this.cache,
-   this.guildId,
-   this.appId,
-   threadId,
-  );
+  const perms = await this.hydrator.channelPerms(this.guildId, this.appId, threadId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageThreads)) {
    return this.createError(

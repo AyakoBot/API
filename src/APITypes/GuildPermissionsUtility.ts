@@ -1,7 +1,9 @@
-import { type Cache, type logger as Logger, getGuildPerms, getRoleHierarchy } from '@ayako/utility';
+import { type Cache, type logger as Logger } from '@ayako/utility';
 import { type GuildsAPI, PermissionFlagsBits } from '@discordjs/core';
+import type { REST } from '@discordjs/rest';
 
 import API from './API.js';
+import PermissionHydrator, { HierarchyVerdict } from './PermissionHydrator.js';
 
 type Disallowed = { response: false; debug: number; message: string };
 type Allowed = { response: true; debug: number };
@@ -10,15 +12,17 @@ export default class GuildPermissionsUtility {
  logger: typeof Logger;
  cache: Cache;
  botId: string;
+ hydrator: PermissionHydrator;
 
- constructor(logger: typeof Logger, cache: Cache, botId: string) {
+ constructor(logger: typeof Logger, cache: Cache, botId: string, rest: REST) {
   this.logger = logger;
   this.cache = cache;
   this.botId = botId;
+  this.hydrator = new PermissionHydrator(cache, rest);
  }
 
  async canManageGuild(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageGuild)) {
    return { response: false, debug: 1, message: 'Missing ManageGuild permission' };
@@ -28,7 +32,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canManageChannels(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageChannels)) {
    return { response: false, debug: 1, message: 'Missing ManageChannels permission' };
@@ -38,7 +42,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canBanMembers(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.BanMembers)) {
    return { response: false, debug: 1, message: 'Missing BanMembers permission' };
@@ -48,7 +52,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canKickMembers(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.KickMembers)) {
    return { response: false, debug: 1, message: 'Missing KickMembers permission' };
@@ -58,7 +62,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canManageRoles(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageRoles)) {
    return { response: false, debug: 1, message: 'Missing ManageRoles permission' };
@@ -68,7 +72,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canManageWebhooks(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageWebhooks)) {
    return { response: false, debug: 1, message: 'Missing ManageWebhooks permission' };
@@ -78,7 +82,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canViewAuditLog(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ViewAuditLog)) {
    return { response: false, debug: 1, message: 'Missing ViewAuditLog permission' };
@@ -88,7 +92,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canManageGuildExpressions(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (
    !API.hasPerm(perms, PermissionFlagsBits.ManageGuildExpressions) &&
@@ -105,7 +109,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canCreateGuildExpressions(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.CreateGuildExpressions)) {
    return { response: false, debug: 1, message: 'Missing CreateGuildExpressions permission' };
@@ -115,7 +119,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canManageEvents(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageEvents)) {
    return { response: false, debug: 1, message: 'Missing ManageEvents permission' };
@@ -125,7 +129,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canBulkBanUsers(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.BanMembers)) {
    return { response: false, debug: 1, message: 'Missing BanMembers permission' };
@@ -139,7 +143,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canBeginPrune(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.KickMembers)) {
    return { response: false, debug: 1, message: 'Missing KickMembers permission' };
@@ -153,7 +157,7 @@ export default class GuildPermissionsUtility {
  }
 
  async canEditOnboarding(guildId: string): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageGuild)) {
    return { response: false, debug: 1, message: 'Missing ManageGuild permission' };
@@ -170,7 +174,7 @@ export default class GuildPermissionsUtility {
   guildId: string,
   body: Parameters<GuildsAPI['addMember']>[2],
  ): Promise<Disallowed | Allowed> {
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (!API.hasPerm(perms, PermissionFlagsBits.CreateInstantInvite)) {
    return { response: false, debug: 1, message: 'Missing CreateInstantInvite permission' };
@@ -200,17 +204,12 @@ export default class GuildPermissionsUtility {
   body: Parameters<GuildsAPI['editMember']>[2],
   userId: string,
  ): Promise<Disallowed | Allowed> {
-  const { response: isAboveTarget } = await getRoleHierarchy.call(
-   this.cache,
-   guildId,
-   this.botId,
-   userId,
-  );
-  if (!isAboveTarget) {
+  const hierarchy = await this.hydrator.roleHierarchy(guildId, this.botId, userId);
+  if (hierarchy === HierarchyVerdict.NotAbove) {
    return { response: false, debug: 0, message: 'Bot role <= target user role' };
   }
 
-  const { response: perms } = await getGuildPerms.call(this.cache, guildId, this.botId);
+  const perms = await this.hydrator.guildPerms(guildId, this.botId);
 
   if (body?.nick !== undefined && !API.hasPerm(perms, PermissionFlagsBits.ManageNicknames)) {
    return { response: false, debug: 1, message: 'Missing ManageNicknames permission' };

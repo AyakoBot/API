@@ -31,7 +31,7 @@ export default class ChannelsAPI extends API {
   super(token, logger, guildId);
 
   this.base = new DiscordChannelsAPI(this.rest);
-  this.util = new PermissionUtility(logger, cache, this.appId);
+  this.util = new PermissionUtility(logger, cache, this.appId, this.rest);
  }
 
  private static countComponents(
