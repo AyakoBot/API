@@ -1,9 +1,13 @@
 import { type Cache, type logger as Logger } from '@ayako/utility';
 import { type GuildsAPI, PermissionFlagsBits } from '@discordjs/core';
 import type { REST } from '@discordjs/rest';
+import type { GuildFeature } from 'discord-api-types/v10';
 
 import API from './API.js';
 import PermissionHydrator, { HierarchyVerdict } from './PermissionHydrator.js';
+
+// todo: switch to djs GuildFeature once implemented
+const pruneRequiresAdmin = 'PRUNE_REQUIRES_ADMIN' as GuildFeature;
 
 type Disallowed = { response: false; debug: number; message: string };
 type Allowed = { response: true; debug: number };
@@ -142,18 +146,27 @@ export default class GuildPermissionsUtility {
   return { response: true, debug: 3 };
  }
 
- async canBeginPrune(guildId: string): Promise<Disallowed | Allowed> {
+ async canPrune(guildId: string): Promise<Disallowed | Allowed> {
   const perms = await this.hydrator.guildPerms(guildId, this.botId);
+  const guild = await this.cache.guilds.get(guildId);
+
+  if (guild?.features?.includes(pruneRequiresAdmin)) {
+   if (!API.hasPerm(perms, PermissionFlagsBits.Administrator)) {
+    return { response: false, debug: 1, message: 'Missing Administrator permission' };
+   }
+
+   return { response: true, debug: 2 };
+  }
 
   if (!API.hasPerm(perms, PermissionFlagsBits.KickMembers)) {
-   return { response: false, debug: 1, message: 'Missing KickMembers permission' };
+   return { response: false, debug: 3, message: 'Missing KickMembers permission' };
   }
 
   if (!API.hasPerm(perms, PermissionFlagsBits.ManageGuild)) {
-   return { response: false, debug: 2, message: 'Missing ManageGuild permission' };
+   return { response: false, debug: 4, message: 'Missing ManageGuild permission' };
   }
 
-  return { response: true, debug: 3 };
+  return { response: true, debug: 5 };
  }
 
  async canEditOnboarding(guildId: string): Promise<Disallowed | Allowed> {

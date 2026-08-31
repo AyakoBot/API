@@ -389,6 +389,19 @@ export default class GuildsAPI extends API {
    );
  }
 
+ getRoleMemberCounts(guildId: Snowflake, { origin, reason }: { origin: string; reason: string }) {
+  return this.rest
+   .get(`/guilds/${guildId}/roles/member-counts`)
+   .then((res) => res as Record<Snowflake, number>)
+   .catch((err) =>
+    this.createError(
+     { guildId },
+     { action: 'get role member counts', detail: origin, debug: -1, message: reason },
+     { errorMessage: err.message, error: err },
+    ),
+   );
+ }
+
  getRole(
   guildId: Snowflake,
   roleId: Snowflake,
@@ -704,7 +717,7 @@ export default class GuildsAPI extends API {
   query: Parameters<DiscordGuildsAPI['getPruneCount']>[1],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const can = await this.util.canKickMembers(guildId);
+  const can = await this.util.canPrune(guildId);
   if (!can.response) {
    return this.createError(
     { guildId },
@@ -729,7 +742,7 @@ export default class GuildsAPI extends API {
   body: Parameters<DiscordGuildsAPI['beginPrune']>[1],
   { origin, reason }: { origin: string; reason: string },
  ) {
-  const can = await this.util.canBeginPrune(guildId);
+  const can = await this.util.canPrune(guildId);
   if (!can.response) {
    return this.createError(
     { guildId },
