@@ -217,9 +217,18 @@ export default class GuildPermissionsUtility {
   body: Parameters<GuildsAPI['editMember']>[2],
   userId: string,
  ): Promise<Disallowed | Allowed> {
-  const hierarchy = await this.hydrator.roleHierarchy(guildId, this.botId, userId);
-  if (hierarchy === HierarchyVerdict.NotAbove) {
-   return { response: false, debug: 0, message: 'Bot role <= target user role' };
+  const targetsMember =
+   body?.nick !== undefined ||
+   body?.mute !== undefined ||
+   body?.deaf !== undefined ||
+   body?.channel_id !== undefined ||
+   body?.communication_disabled_until !== undefined;
+
+  if (targetsMember) {
+   const hierarchy = await this.hydrator.roleHierarchy(guildId, this.botId, userId);
+   if (hierarchy === HierarchyVerdict.NotAbove) {
+    return { response: false, debug: 0, message: 'Bot role <= target user role' };
+   }
   }
 
   const perms = await this.hydrator.guildPerms(guildId, this.botId);
