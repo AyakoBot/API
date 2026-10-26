@@ -3,6 +3,7 @@ import {
  ChannelType,
  ChannelsAPI as DiscordChannelsAPI,
  GuildsAPI as DiscordGuildsAPI,
+ type APIRole,
  type APIThreadChannel,
  type Snowflake,
 } from '@discordjs/core';
@@ -21,6 +22,8 @@ const threadTypes = [
  ChannelType.PublicThread,
  ChannelType.PrivateThread,
 ];
+
+const rolesFetchedAt = new Map<Snowflake, number>();
 
 export default class PermissionHydrator {
  cache: Cache;
@@ -49,6 +52,7 @@ export default class PermissionHydrator {
    this.ensureMember(guildId, targetId),
   ]);
   if (!executorKnown || !targetKnown) return HierarchyVerdict.Indeterminate;
+  if (!(await this.ensureRoles(guildId, targetId))) return HierarchyVerdict.Indeterminate;
 
   const { response } = await getRoleHierarchy.call(this.cache, guildId, executorId, targetId);
   return response ? HierarchyVerdict.Above : HierarchyVerdict.NotAbove;
@@ -70,7 +74,7 @@ export default class PermissionHydrator {
    this.ensureGuild(guildId),
   ]);
 
-  return memberKnown && guildKnown && (await this.ensureRoles(guildId));
+  return memberKnown && guildKnown && (await this.ensureRoles(guildId, userId));
  }
 
  private async ensureMember(guildId: Snowflake, userId: Snowflake): Promise<boolean> {
@@ -90,18 +94,29 @@ export default class PermissionHydrator {
   if (!fetched) return false;
 
   await this.cache.guilds.set(fetched);
-  await Promise.all(fetched.roles.map((role) => this.cache.roles.set(role, guildId)));
+  await this.storeRoles(guildId, fetched.roles);
   return true;
  }
 
- private async ensureRoles(guildId: Snowflake): Promise<boolean> {
-  if ((await this.cache.roles.getAll(guildId)).length) return true;
+ private async ensureRoles(guildId: Snowflake, userId: Snowflake): Promise<boolean> {
+  const [member, roles] = await Promise.all([
+   this.cache.members.get(guildId, userId),
+   this.cache.roles.getAll(guildId),
+  ]);
+  const cached = new Set(roles.map((role) => role.id));
+  if ([guildId, ...(member?.roles ?? [])].every((id) => cached.has(id))) return true;
+  if (Date.now() - (rolesFetchedAt.get(guildId) ?? 0) < 300000) return true;
 
   const fetched = await this.guilds.getRoles(guildId).catch(() => null);
   if (!fetched) return false;
 
-  await Promise.all(fetched.map((role) => this.cache.roles.set(role, guildId)));
+  await this.storeRoles(guildId, fetched);
   return true;
+ }
+
+ private async storeRoles(guildId: Snowflake, roles: APIRole[]): Promise<void> {
+  await Promise.all(roles.map((role) => this.cache.roles.set(role, guildId)));
+  rolesFetchedAt.set(guildId, Date.now());
  }
 
  private async ensureChannel(channelId: Snowflake): Promise<boolean> {

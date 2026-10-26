@@ -2,7 +2,7 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
 
-import { ChannelType, PermissionFlagsBits } from '@discordjs/core';
+import { ChannelType, OverwriteType, PermissionFlagsBits } from '@discordjs/core';
 
 import PermissionHydrator, { HierarchyVerdict, INDETERMINATE_PERMS } from './PermissionHydrator.js';
 
@@ -173,4 +173,59 @@ test('roleHierarchy: target member fetch fails -> Indeterminate', async () => {
  const h = hydratorWith(cache, { guild: hierarchyGuild, members: { E: highMember } });
 
  assert.strictEqual(await h.roleHierarchy('G', 'E', 'T'), HierarchyVerdict.Indeterminate);
+});
+
+const adminRole = { id: 'RA', permissions: String(PermissionFlagsBits.Administrator) };
+
+const partialCache = async (guildId: string, channelId: string, memberRoles: string[]) => {
+ const guild = { id: guildId, owner_id: 'O' };
+ const channel = {
+  id: channelId,
+  type: ChannelType.GuildText,
+  guild_id: guildId,
+  permission_overwrites: [
+   {
+    id: guildId,
+    type: OverwriteType.Role,
+    allow: '0',
+    deny: String(PermissionFlagsBits.ViewChannel),
+   },
+  ],
+ };
+
+ const cache = fakeCache();
+ await cache.guilds.set(guild);
+ await cache.roles.set({ id: guildId, permissions: String(basePerms) }, guildId);
+ await cache.members.set({ user: { id: 'B' }, roles: memberRoles }, guildId);
+ await cache.channels.set(channel);
+ return cache;
+};
+
+test('partial role cache: reloads roles when one of the member roles is missing', async () => {
+ const cache = await partialCache('GP', 'CP', ['RA']);
+ const h = hydratorWith(cache, {
+  rolesList: [{ id: 'GP', permissions: String(basePerms) }, adminRole],
+ });
+
+ const perms = await h.channelPerms('GP', 'B', 'CP');
+ assert.strictEqual(perms & PermissionFlagsBits.Administrator, PermissionFlagsBits.Administrator);
+});
+
+test('role still missing right after a reload: trusts the reload and fetches nothing', async () => {
+ const cache = await partialCache('GT', 'CT', ['RGone']);
+ const raw: { rolesList?: unknown[] } = {
+  rolesList: [{ id: 'GT', permissions: String(basePerms) }],
+ };
+ const h = hydratorWith(cache, raw);
+
+ assert.strictEqual(await h.guildPerms('GT', 'B'), basePerms);
+ delete raw.rolesList;
+ assert.strictEqual(await h.guildPerms('GT', 'B'), basePerms);
+});
+
+test('role reload fails on a partial cache: returns INDETERMINATE_PERMS', async () => {
+ const cache = await partialCache('GF', 'CF', ['RX']);
+ const h = hydratorWith(cache, {});
+
+ assert.strictEqual(await h.guildPerms('GF', 'B'), INDETERMINATE_PERMS);
 });
